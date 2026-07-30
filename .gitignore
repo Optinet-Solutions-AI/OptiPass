@@ -1,0 +1,7 @@
+# local-only backup of the pre-Supabase version
+backup-v1-local/
+
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store
