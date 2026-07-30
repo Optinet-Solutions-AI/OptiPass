@@ -498,6 +498,25 @@ textarea {
   color: var(--muted);
 }
 
+.badge.low {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.mon-value {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mon-value.low {
+  color: var(--danger);
+}
+
+#m-threshold {
+  width: 96px;
+}
+
 .empty {
   text-align: center;
   padding: 56px 0;

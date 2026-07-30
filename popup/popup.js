@@ -23,6 +23,8 @@ const ICONS = {
   pen: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
   moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
+  refresh:
+    '<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.64A9 9 0 0 0 20.49 15"/>',
 };
 
 function icon(name) {
@@ -39,14 +41,17 @@ const state = {
   settings: { ...keychain.DEFAULT_SETTINGS },
   editingId: null,
   activeHost: null,
+  activeUrl: null,
   revealPassword: false,
   loginMode: 'signin', // or 'signup'
   adminProfiles: [],
+  monitors: [],
+  editingMonitorId: null,
 };
 
 // ---------- screens / feedback ----------
 
-const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'main', 'edit', 'settings', 'admin'];
+const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'main', 'edit', 'settings', 'admin', 'monitors', 'monitor-edit'];
 
 function showScreen(name) {
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
@@ -146,7 +151,10 @@ async function boot() {
 async function getActiveHost() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.url) return new URL(tab.url).hostname.replace(/^www\./, '');
+    if (tab?.url) {
+      state.activeUrl = tab.url;
+      return new URL(tab.url).hostname.replace(/^www\./, '');
+    }
   } catch {
     /* chrome:// pages etc. */
   }
@@ -402,10 +410,17 @@ async function enterMain() {
     return showScreen('unlock');
   }
   await fetchItems();
+  try {
+    await fetchMonitors();
+  } catch {
+    state.monitors = []; // table may not exist until migration 002 runs
+  }
   populateVaultSelects();
   $('btn-admin').classList.toggle('hidden', !['admin', 'super_admin'].includes(state.profile.role));
   renderList();
+  if (await resumePendingPick()) return; // finish an in-progress monitor pick
   showScreen('main');
+  autoCaptureMonitors(); // fire-and-forget refresh for the current site
 }
 
 // ---------- main list ----------
@@ -1006,6 +1021,401 @@ $('btn-vault-delete').addEventListener('click', async (e) => {
 });
 
 $('btn-admin-back').addEventListener('click', () => showScreen('main'));
+
+// ---------- tool credit monitors ----------
+
+function monitorHost(url) {
+  try {
+    return new URL(url.includes('://') ? url : `https://${url}`).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+async function fetchMonitors() {
+  state.monitors = await api.rest('/tool_monitors?select=*&order=name');
+}
+
+function formatMonitorValue(mon) {
+  if (mon.last_numeric === null || mon.last_numeric === undefined) {
+    return mon.last_value || 'no reading yet';
+  }
+  const n = Number(mon.last_numeric).toLocaleString();
+  return mon.unit ? `${n} ${mon.unit}` : n;
+}
+
+function monitorIsLow(mon) {
+  return (
+    mon.threshold !== null &&
+    mon.threshold !== undefined &&
+    mon.last_numeric !== null &&
+    mon.last_numeric !== undefined &&
+    Number(mon.last_numeric) < Number(mon.threshold)
+  );
+}
+
+function timeAgo(iso) {
+  if (!iso) return 'never checked';
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function renderMonitors() {
+  const list = $('monitor-list');
+  list.innerHTML = '';
+  $('monitors-empty').classList.toggle('hidden', state.monitors.length > 0);
+
+  for (const mon of state.monitors) {
+    const row = document.createElement('div');
+    row.className = 'person';
+
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = mon.name;
+    if (monitorIsLow(mon)) {
+      const b = document.createElement('span');
+      b.className = 'badge low';
+      b.textContent = 'low';
+      who.appendChild(b);
+    }
+    const small = document.createElement('small');
+    small.textContent = `${monitorHost(mon.url) || mon.url} - ${timeAgo(mon.last_checked_at)}`;
+    who.appendChild(small);
+
+    const value = document.createElement('div');
+    value.className = 'mon-value' + (monitorIsLow(mon) ? ' low' : '');
+    value.textContent = formatMonitorValue(mon);
+
+    const refresh = actionBtn('refresh', 'Refresh from the open dashboard tab', async () => {
+      if (await captureMonitor(mon)) renderMonitors();
+    });
+    const edit = actionBtn('pen', 'Edit monitor', () => openMonitorEdit(mon.id));
+
+    row.append(who, value, refresh, edit);
+    list.appendChild(row);
+  }
+}
+
+// Runs inside the dashboard page: find the tracked element and read it.
+function injectedExtract(selector, keyword) {
+  const parseNum = (t) => {
+    const m = (t || '').replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+    return m ? parseFloat(m[0]) : null;
+  };
+  let el = null;
+  if (selector) {
+    try {
+      el = document.querySelector(selector);
+    } catch {
+      /* stale selector */
+    }
+  }
+  if (!el && keyword) {
+    // Most specific (shortest) element containing the keyword and a digit.
+    const kw = keyword.toLowerCase();
+    let best = null;
+    for (const node of document.body.querySelectorAll('*')) {
+      const text = (node.textContent || '').trim();
+      if (!text || text.length > 120) continue;
+      if (text.toLowerCase().includes(kw) && /\d/.test(text)) {
+        if (!best || text.length < best.text.length) best = { node, text };
+      }
+    }
+    el = best && best.node;
+  }
+  if (!el) return null;
+  const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+  return { text, numeric: parseNum(text) };
+}
+
+async function captureMonitor(mon, { silent = false } = {}) {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return false;
+    const tabHost = new URL(tab.url).hostname.replace(/^www\./, '');
+    if (monitorHost(mon.url) !== tabHost) {
+      if (!silent) toast(`Open ${monitorHost(mon.url)} in this tab first`);
+      return false;
+    }
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: injectedExtract,
+      args: [mon.selector || '', mon.keyword || ''],
+    });
+    const r = results.map((x) => x.result).find(Boolean);
+    if (!r || r.numeric === null) {
+      if (!silent) toast('Could not find the value on this page');
+      return false;
+    }
+    const patch = {
+      last_value: r.text,
+      last_numeric: r.numeric,
+      last_checked_at: new Date().toISOString(),
+      last_checked_by: state.uid,
+    };
+    await api.rest(`/tool_monitors?id=eq.${mon.id}`, { method: 'PATCH', body: patch });
+    Object.assign(mon, patch);
+    if (!silent) toast(`${mon.name}: ${formatMonitorValue(mon)}`);
+    return true;
+  } catch {
+    if (!silent) toast('Capture failed');
+    return false;
+  }
+}
+
+// When the popup opens on a monitored site, refresh its reading quietly.
+async function autoCaptureMonitors() {
+  if (!state.activeHost) return;
+  for (const mon of state.monitors) {
+    if (monitorHost(mon.url) !== state.activeHost) continue;
+    if (await captureMonitor(mon, { silent: true })) {
+      toast(`${mon.name}: ${formatMonitorValue(mon)}${monitorIsLow(mon) ? ' - LOW' : ''}`);
+    }
+  }
+}
+
+function openMonitorEdit(id, prefill = null) {
+  state.editingMonitorId = id;
+  const mon = id ? state.monitors.find((m) => m.id === id) : null;
+  const src = prefill || mon || {};
+  $('monitor-edit-heading').textContent = mon ? 'Edit monitor' : 'Add monitor';
+  $('m-name').value = src.name || '';
+  $('m-url').value = src.url || state.activeUrl || '';
+  $('m-keyword').value = src.keyword || '';
+  $('m-unit').value = src.unit || '';
+  $('m-threshold').value = src.threshold ?? '';
+  $('m-picked').classList.add('hidden');
+  if (src.selector) {
+    $('m-picked').textContent = prefill?.pickedText
+      ? `Picked: "${prefill.pickedText}"`
+      : 'A picked element is saved for this monitor.';
+    $('m-picked').classList.remove('hidden');
+  }
+  $('m-picked').dataset.selector = src.selector || '';
+  hideError('monitor-error');
+  const del = $('btn-monitor-delete');
+  del.classList.toggle('hidden', !mon);
+  del.textContent = 'Delete';
+  del.dataset.confirming = '';
+  showScreen('monitor-edit');
+}
+
+// Element picker injected into the page. The popup closes when the user
+// clicks the page, so the result goes to the background worker and is
+// collected next time the popup opens (resumePendingPick).
+function injectedPicker() {
+  if (window.__optipassPicker) return;
+  window.__optipassPicker = true;
+  const Z = 2147483647;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `position:fixed;pointer-events:none;z-index:${Z};border:2px solid #5551d8;background:rgba(85,81,216,.12);border-radius:4px;`;
+  const tip = document.createElement('div');
+  tip.style.cssText = `position:fixed;z-index:${Z};background:#23221f;color:#fff;font:12px/1.5 sans-serif;padding:6px 12px;border-radius:8px;pointer-events:none;max-width:320px;`;
+  tip.textContent = 'OptiPass: click the number showing the remaining credits (Esc to cancel)';
+  document.body.append(overlay, tip);
+
+  const cssPath = (el) => {
+    const esc = (s) => (window.CSS && CSS.escape ? CSS.escape(s) : s);
+    const parts = [];
+    let node = el;
+    while (node && node.nodeType === 1 && node !== document.body) {
+      if (node.id) {
+        parts.unshift(`#${esc(node.id)}`);
+        break;
+      }
+      let part = node.tagName.toLowerCase();
+      const cls = [...node.classList].slice(0, 2).map((c) => `.${esc(c)}`).join('');
+      part += cls;
+      const parent = node.parentElement;
+      if (parent) {
+        const same = [...parent.children].filter((c) => c.tagName === node.tagName);
+        if (same.length > 1) part += `:nth-of-type(${same.indexOf(node) + 1})`;
+      }
+      parts.unshift(part);
+      node = parent;
+    }
+    // Shortest suffix of the path that still uniquely finds the element.
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const candidate = parts.slice(i).join(' > ');
+      try {
+        if (document.querySelector(candidate) === el) return candidate;
+      } catch {
+        /* try longer */
+      }
+    }
+    return parts.join(' > ');
+  };
+
+  const move = (e) => {
+    const r = e.target.getBoundingClientRect();
+    overlay.style.left = `${r.left - 2}px`;
+    overlay.style.top = `${r.top - 2}px`;
+    overlay.style.width = `${r.width}px`;
+    overlay.style.height = `${r.height}px`;
+    tip.style.left = `${Math.min(e.clientX + 14, innerWidth - 340)}px`;
+    tip.style.top = `${Math.min(e.clientY + 18, innerHeight - 60)}px`;
+  };
+  const key = (e) => {
+    if (e.key === 'Escape') cleanup();
+  };
+  const click = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.target;
+    const text = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+    const m = text.replace(/,/g, '').match(/-?\d+(\.\d+)?/);
+    chrome.runtime.sendMessage({
+      type: 'optipass-monitor-pick',
+      payload: {
+        selector: cssPath(el),
+        text,
+        numeric: m ? parseFloat(m[0]) : null,
+        url: location.href.split('#')[0],
+        title: document.title,
+      },
+    });
+    cleanup();
+    const ok = document.createElement('div');
+    ok.style.cssText = `position:fixed;top:16px;right:16px;z-index:${Z};background:#23221f;color:#fff;font:13px sans-serif;padding:10px 18px;border-radius:999px;`;
+    ok.textContent = 'Captured - reopen OptiPass to finish';
+    document.body.appendChild(ok);
+    setTimeout(() => ok.remove(), 4000);
+  };
+  const cleanup = () => {
+    overlay.remove();
+    tip.remove();
+    document.removeEventListener('mousemove', move, true);
+    document.removeEventListener('click', click, true);
+    document.removeEventListener('keydown', key, true);
+    window.__optipassPicker = false;
+  };
+  document.addEventListener('mousemove', move, true);
+  document.addEventListener('click', click, true);
+  document.addEventListener('keydown', key, true);
+}
+
+async function resumePendingPick() {
+  const o = await chrome.storage.session.get(['optipass_pending_pick', 'optipass_monitor_draft']);
+  const pick = o.optipass_pending_pick;
+  if (!pick) return false;
+  await chrome.storage.session.remove(['optipass_pending_pick', 'optipass_monitor_draft']);
+  const draft = o.optipass_monitor_draft || {};
+  openMonitorEdit(draft.id || null, {
+    name: draft.name || (pick.title || '').split(/[|\-–—:·]/)[0].trim().slice(0, 40),
+    url: draft.url || pick.url,
+    selector: pick.selector,
+    keyword: draft.keyword || '',
+    unit: draft.unit || '',
+    threshold: draft.threshold || '',
+    pickedText: pick.text,
+  });
+  return true;
+}
+
+$('btn-monitors').addEventListener('click', async () => {
+  try {
+    await fetchMonitors();
+  } catch {
+    toast('Run migration-002-tool-monitors.sql in Supabase first');
+  }
+  renderMonitors();
+  showScreen('monitors');
+});
+
+$('btn-monitors-back').addEventListener('click', () => showScreen('main'));
+$('btn-monitor-add').addEventListener('click', () => openMonitorEdit(null));
+$('btn-monitor-edit-back').addEventListener('click', () => {
+  renderMonitors();
+  showScreen('monitors');
+});
+
+$('btn-monitor-pick').addEventListener('click', async () => {
+  await chrome.storage.session.set({
+    optipass_monitor_draft: {
+      id: state.editingMonitorId,
+      name: $('m-name').value,
+      url: $('m-url').value,
+      keyword: $('m-keyword').value,
+      unit: $('m-unit').value,
+      threshold: $('m-threshold').value,
+    },
+  });
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: injectedPicker });
+    window.close(); // hand control to the page; the pick resumes on reopen
+  } catch {
+    showError('monitor-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
+  }
+});
+
+$('btn-monitor-save').addEventListener('click', async () => {
+  hideError('monitor-error');
+  const name = $('m-name').value.trim();
+  const url = $('m-url').value.trim();
+  const keyword = $('m-keyword').value.trim();
+  const selector = $('m-picked').dataset.selector || '';
+  if (!name) return showError('monitor-error', 'Name the tool.');
+  if (!url) return showError('monitor-error', 'The dashboard URL is required.');
+  if (!selector && !keyword) {
+    return showError('monitor-error', 'Pick the number on the page, or give a keyword to find it by.');
+  }
+  const thr = $('m-threshold').value;
+  const body = {
+    name,
+    url,
+    selector: selector || null,
+    keyword: keyword || null,
+    unit: $('m-unit').value.trim() || null,
+    threshold: thr === '' ? null : Number(thr),
+  };
+  try {
+    let mon;
+    if (state.editingMonitorId) {
+      await api.rest(`/tool_monitors?id=eq.${state.editingMonitorId}`, { method: 'PATCH', body });
+      mon = state.monitors.find((m) => m.id === state.editingMonitorId);
+      Object.assign(mon, body);
+    } else {
+      const [row] = await api.rest('/tool_monitors?select=*', {
+        method: 'POST',
+        body,
+        prefer: 'return=representation',
+      });
+      state.monitors.push(row);
+      state.monitors.sort((a, b) => a.name.localeCompare(b.name));
+      mon = row;
+      api.logEvent('monitor.create', { monitor_id: row.id, name });
+    }
+    await captureMonitor(mon, { silent: true }); // grab a first reading if the tab matches
+    renderMonitors();
+    showScreen('monitors');
+    toast('Monitor saved');
+  } catch (err) {
+    showError('monitor-error', err.message);
+  }
+});
+
+$('btn-monitor-delete').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  if (!btn.dataset.confirming) {
+    btn.dataset.confirming = '1';
+    btn.textContent = 'Confirm delete';
+    return;
+  }
+  try {
+    await api.rest(`/tool_monitors?id=eq.${state.editingMonitorId}`, { method: 'DELETE' });
+    api.logEvent('monitor.delete', { monitor_id: state.editingMonitorId });
+    state.monitors = state.monitors.filter((m) => m.id !== state.editingMonitorId);
+    renderMonitors();
+    showScreen('monitors');
+    toast('Monitor deleted');
+  } catch (err) {
+    showError('monitor-error', err.message);
+  }
+});
 
 // ---------- go ----------
 

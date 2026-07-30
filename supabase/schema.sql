@@ -303,3 +303,37 @@ grant update (display_name, theme, public_key) on public.profiles to authenticat
 
 -- the audit log is append-only
 revoke update, delete on public.audit_log from authenticated;
+
+-- ============ TOOL CREDIT MONITORS ============
+-- Readings scraped from tool dashboards while a member has them
+-- open. Team-visible, not E2E encrypted (no secrets inside), so a
+-- signed-in member can refresh values even with a locked vault.
+
+create table public.tool_monitors (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  url text not null,
+  selector text,
+  keyword text,
+  unit text,
+  threshold numeric,
+  last_value text,
+  last_numeric numeric,
+  last_checked_at timestamptz,
+  last_checked_by uuid references public.profiles (id) on delete set null,
+  created_by uuid default auth.uid() references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.tool_monitors enable row level security;
+
+create policy monitors_select on public.tool_monitors for select
+  using (public.is_active());
+create policy monitors_insert on public.tool_monitors for insert
+  with check (public.is_active());
+create policy monitors_update on public.tool_monitors for update
+  using (public.is_active()) with check (public.is_active());
+create policy monitors_delete on public.tool_monitors for delete
+  using (public.is_active());
+
+revoke all on public.tool_monitors from anon;
