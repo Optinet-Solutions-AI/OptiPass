@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "OptiPass",
   "version": "2.0.0",
-  "description": "Optinet Solutions team password manager - end-to-end encrypted vaults synced via Supabase.",
+  "description": "Optinet Solutions team password manager - end-to-end encrypted vaults, autofill, and 2FA codes.",
   "permissions": ["storage", "alarms", "activeTab", "scripting", "clipboardWrite"],
   "background": {
     "service_worker": "background.js"
