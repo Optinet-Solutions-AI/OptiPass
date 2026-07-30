@@ -3,6 +3,7 @@ import {
   encryptJson,
   exportKeyB64,
   generatePassword,
+  generateTotp,
   generateVaultKey,
   importKeyB64,
   importPrivateKey,
@@ -25,6 +26,7 @@ const ICONS = {
   sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
   refresh:
     '<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.64A9 9 0 0 0 20.49 15"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 };
 
 function icon(name) {
@@ -494,6 +496,9 @@ function renderList() {
       actionBtn('user', 'Copy username', () => copyText(entry.data.username, 'Username copied')),
       actionBtn('key', 'Copy password', () => copyText(entry.data.password, 'Password copied'))
     );
+    if (entry.data.totp) {
+      actions.append(actionBtn('shield', 'Copy 2FA code', () => copyTotp(entry)));
+    }
     if (vaultWritable(entry.vault_id)) {
       actions.append(actionBtn('pen', 'Edit', () => openEdit(entry.id)));
     }
@@ -516,6 +521,14 @@ async function copyText(text, message) {
   if (!text) return toast('Nothing to copy');
   await navigator.clipboard.writeText(text);
   toast(message);
+  keychain.resetAutoLock();
+}
+
+async function copyTotp(entry) {
+  const t = await generateTotp(entry.data.totp);
+  if (!t) return toast('This entry has an invalid 2FA key');
+  await navigator.clipboard.writeText(t.code);
+  toast(`2FA code copied - valid ${t.secondsLeft}s`);
   keychain.resetAutoLock();
 }
 
@@ -591,7 +604,17 @@ async function fillCredentials(entry) {
       args: [entry.data.username || '', entry.data.password || ''],
     });
     if (results.some((r) => r.result)) {
-      toast('Filled');
+      // The 1Password trick: after filling, put the current OTP on the
+      // clipboard so the 2FA prompt is just a paste away.
+      let msg = 'Filled';
+      if (entry.data.totp) {
+        const t = await generateTotp(entry.data.totp);
+        if (t) {
+          await navigator.clipboard.writeText(t.code);
+          msg = `Filled - 2FA code copied, paste when asked (${t.secondsLeft}s)`;
+        }
+      }
+      toast(msg);
       keychain.resetAutoLock();
     } else {
       toast('No login fields found on this page');
@@ -624,7 +647,9 @@ function openEdit(id) {
   $('f-url').value = entry?.data.url ?? (entry ? '' : state.activeHost || '');
   $('f-username').value = entry?.data.username || '';
   $('f-password').value = entry?.data.password || '';
+  $('f-totp').value = entry?.data.totp || '';
   $('f-notes').value = entry?.data.notes || '';
+  updateTotpPreview();
 
   const del = $('btn-delete');
   del.classList.toggle('hidden', !entry);
@@ -649,6 +674,30 @@ $('btn-generate').addEventListener('click', () => {
   state.revealPassword = true;
 });
 
+// Live 2FA code preview while editing (rotates every 30s).
+async function updateTotpPreview() {
+  const raw = $('f-totp').value.trim();
+  const box = $('totp-preview');
+  if (!raw) return box.classList.add('hidden');
+  box.classList.remove('hidden');
+  const t = await generateTotp(raw);
+  const codeEl = $('totp-code');
+  if (!t) {
+    codeEl.textContent = "This doesn't look like a valid 2FA key yet";
+    codeEl.classList.add('invalid');
+    $('totp-left').textContent = '';
+    return;
+  }
+  codeEl.classList.remove('invalid');
+  codeEl.textContent = `${t.code.slice(0, 3)} ${t.code.slice(3)}`;
+  $('totp-left').textContent = `renews in ${t.secondsLeft}s`;
+}
+
+$('f-totp').addEventListener('input', updateTotpPreview);
+setInterval(() => {
+  if (!$('screen-edit').classList.contains('hidden')) updateTotpPreview();
+}, 1000);
+
 $('btn-save').addEventListener('click', async () => {
   const title = $('f-title').value.trim();
   const vaultId = $('f-vault').value;
@@ -658,6 +707,14 @@ $('btn-save').addEventListener('click', async () => {
   const key = state.vaultKeys.get(vaultId);
   if (!key) return showError('edit-error', 'Vault key unavailable - relock and unlock again.');
 
+  const totp = $('f-totp').value.trim();
+  if (totp && !(await generateTotp(totp))) {
+    return showError(
+      'edit-error',
+      "The 2FA key isn't valid - paste the site's setup key (letters/numbers) or its otpauth:// link."
+    );
+  }
+
   const now = new Date().toISOString();
   const existing = state.editingId ? state.items.find((e) => e.id === state.editingId) : null;
   const data = {
@@ -666,6 +723,7 @@ $('btn-save').addEventListener('click', async () => {
     url: $('f-url').value.trim(),
     username: $('f-username').value.trim(),
     password: $('f-password').value,
+    totp,
     notes: $('f-notes').value.trim(),
     createdAt: existing?.data.createdAt || now,
     updatedAt: now,

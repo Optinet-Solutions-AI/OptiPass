@@ -12,6 +12,7 @@ Optinet Solutions' team password manager — a Chrome (Manifest V3) extension ba
 - **Personal vault** for every user (private even from admins) + **shared team vaults**
 - **End-to-end encryption** — master password → PBKDF2 (600k) → AES-256-GCM; team sharing via RSA-wrapped vault keys; master password never leaves the device and is unrecoverable by design
 - **Autofill** into the active tab, this-site suggestions, copy buttons, search
+- **2FA one-time passwords (TOTP)** — store a site's 2FA setup key in the entry (replaces Google Authenticator); live code with countdown, one-click copy, and the code is auto-copied to the clipboard when you Fill a login. Keep the 2FA for OptiPass's own root accounts (Supabase, email) on a phone instead.
 - **Password generator**, auto-lock on idle and browser close
 - **Light/dark theme per user** (light default), synced to their profile
 - **Minimalist UI** — Montserrat (bundled locally, no calls to Google Fonts), monochrome line icons, responsive layout that also works opened as a full browser tab

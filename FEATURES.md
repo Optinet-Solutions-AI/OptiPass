@@ -31,7 +31,7 @@ Legend: ✅ **have it** · 🟡 **easy add** (days) · 🔵 **bigger effort** (w
 | Memorable word-based passwords | 🟡 | e.g. `correct-horse-battery` style |
 | Watchtower: weak/reused password report | 🟡 | Pure client-side analysis |
 | Watchtower: breach check (HaveIBeenPwned) | 🟡 | Free k-anonymity API, password never sent |
-| TOTP 2FA codes (store + copy 6-digit codes) | 🟡 | Small standard algorithm |
+| TOTP 2FA codes (replaces Google Authenticator) | ✅ | Live code in editor, copy button, auto-copied on Fill |
 | Clipboard auto-clear after N seconds | 🟡 | |
 | Phishing guard (warn when filling on wrong domain) | 🟡 | We already domain-match |
 | Secret Key (1Password's second factor) | ⛔ | Big friction for small gain at our scale |

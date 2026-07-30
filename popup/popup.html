@@ -133,6 +133,12 @@
       <input type="number" id="gen-length" min="8" max="64" value="20" />
       <label class="inline checkbox"><input type="checkbox" id="gen-symbols" checked /> Symbols</label>
     </div>
+    <label for="f-totp">2FA one-time passwords (optional)</label>
+    <input type="text" id="f-totp" autocomplete="off" placeholder="Paste the site's 2FA setup key or otpauth:// link" />
+    <div id="totp-preview" class="totp-preview hidden">
+      <span id="totp-code" class="totp-code"></span>
+      <span id="totp-left" class="muted"></span>
+    </div>
     <label for="f-notes">Notes</label>
     <textarea id="f-notes" rows="3"></textarea>
     <div id="edit-error" class="error hidden"></div>
