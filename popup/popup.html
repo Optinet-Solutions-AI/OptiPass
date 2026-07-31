@@ -158,44 +158,11 @@
       <span id="totp-code" class="totp-code"></span>
       <span id="totp-left" class="muted"></span>
     </div>
-    <label class="checkbox monitor-toggle"><input type="checkbox" id="f-monitor" /> Track remaining credits for this tool</label>
-    <div id="monitor-fields" class="hidden">
-      <label for="m-kind">How to read the value</label>
-      <select id="m-kind">
-        <option value="page">From the dashboard page (when someone visits it)</option>
-        <option value="api">From the tool's API (refreshes automatically)</option>
-      </select>
-      <div id="m-page-fields">
-        <label for="m-url">Dashboard page (where the number is shown)</label>
-        <input type="text" id="m-url" placeholder="https://enigmaproxy.net/dashboard" />
-        <button id="btn-monitor-pick" class="btn" style="width:100%">Pick the number on the current page</button>
-        <div id="m-picked" class="error ok hidden"></div>
-        <label for="m-keyword">Or find it by a nearby word</label>
-        <input type="text" id="m-keyword" placeholder='e.g. "credits" — grabs the number next to it' />
-      </div>
-      <div id="m-api-fields" class="hidden">
-        <label for="m-api-url">API endpoint that returns the balance</label>
-        <input type="text" id="m-api-url" autocomplete="off" placeholder="https://enigmaproxy.net/api/customer/packages/PKG_ID" />
-        <label for="m-api-key">API key (stored end-to-end encrypted)</label>
-        <input type="password" id="m-api-key" autocomplete="off" placeholder="Bearer token from the tool's dashboard" />
-        <label for="m-api-path">Response field that holds the number</label>
-        <input type="text" id="m-api-path" autocomplete="off" placeholder="e.g. remainingBandwidth or 0.balance" />
-        <label for="m-api-vault">Keep the key in vault</label>
-        <select id="m-api-vault"></select>
-        <button id="btn-api-test" class="btn" style="width:100%">Test &mdash; fetch the value now</button>
-        <div id="m-api-result" class="error hidden"></div>
-      </div>
-      <div class="row">
-        <div class="grow">
-          <label for="m-unit">Unit</label>
-          <input type="text" id="m-unit" placeholder="credits / GB / USD" />
-        </div>
-        <div>
-          <label for="m-threshold">Warn below</label>
-          <input type="number" id="m-threshold" min="0" />
-        </div>
-      </div>
+    <div class="monitor-head">
+      <label>Credit &amp; usage monitors</label>
+      <button id="btn-metric-add" class="btn small" type="button">+ Add metric</button>
     </div>
+    <div id="metric-list" class="stack"></div>
     <label for="f-notes">Notes</label>
     <textarea id="f-notes" rows="3"></textarea>
     <div id="edit-error" class="error hidden"></div>

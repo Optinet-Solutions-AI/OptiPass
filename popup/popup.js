@@ -27,6 +27,8 @@ const ICONS = {
   refresh:
     '<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.64A9 9 0 0 0 20.49 15"/>',
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  trash:
+    '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/>',
 };
 
 function icon(name) {
@@ -48,7 +50,7 @@ const state = {
   loginMode: 'signin', // or 'signup'
   adminProfiles: [],
   monitors: [],
-  apiConfigLocked: false,
+  editMetrics: [], // metric sub-forms while the entry editor is open
 };
 
 // ---------- screens / feedback ----------
@@ -602,8 +604,8 @@ function renderList() {
     row.append(avatar, info, actions);
     li.appendChild(row);
 
-    const mon = monitorForItem(entry.id);
-    if (mon) li.appendChild(creditBox(mon));
+    const mons = monitorsForItem(entry.id);
+    if (mons.length) li.appendChild(creditBox(mons));
 
     list.appendChild(li);
   }
@@ -728,7 +730,6 @@ async function fillCredentials(entry) {
 
 async function openEdit(id, resume = null) {
   state.editingId = id;
-  state.apiConfigLocked = false;
   state.revealPassword = false;
   $('f-password').type = 'password';
   hideError('edit-error');
@@ -755,54 +756,48 @@ async function openEdit(id, resume = null) {
   $('f-notes').value = d?.notes ?? entry?.data.notes ?? '';
   updateTotpPreview();
 
-  // ----- credit monitor sub-form -----
-  const mon = id ? monitorForItem(id) : null;
-  const vaultSel = $('m-api-vault');
-  vaultSel.innerHTML = '';
-  for (const m of sortedVaults()) vaultSel.append(new Option(m.vaults.name, m.vault_id));
-  if (mon?.api_vault_id && [...vaultSel.options].some((o) => o.value === mon.api_vault_id)) {
-    vaultSel.value = mon.api_vault_id;
-  } else if ([...vaultSel.options].some((o) => o.value === fv.value)) {
-    vaultSel.value = fv.value; // default: same vault as the entry
-  }
-
-  $('f-monitor').checked = !!mon || !!resume;
-  $('m-kind').value = resume ? 'page' : mon?.kind || 'page';
-  $('m-url').value = resume
-    ? d?.murl || resume.pick.url
-    : (mon?.kind === 'page' && mon?.url) || '';
-  $('m-keyword').value = d?.keyword ?? mon?.keyword ?? '';
-  $('m-unit').value = d?.unit ?? mon?.unit ?? '';
-  $('m-threshold').value = d?.threshold ?? mon?.threshold ?? '';
-  $('m-api-url').value = '';
-  $('m-api-key').value = '';
-  $('m-api-path').value = '';
-  hideError('m-api-result');
-  if (mon && mon.kind === 'api' && !resume) {
-    const cfg = await decryptApiConfig(mon);
-    if (cfg) {
-      $('m-api-url').value = cfg.apiUrl || '';
-      $('m-api-key').value = cfg.apiKey || '';
-      $('m-api-path').value = cfg.jsonPath || '';
-    } else {
-      state.apiConfigLocked = true;
-      showError(
-        'm-api-result',
-        "You aren't in the vault holding this monitor's API key, so only a member of that vault can edit it."
-      );
+  // ----- credit / usage metrics -----
+  state.editMetrics = [];
+  if (resume?.draft?.metrics) {
+    state.editMetrics = resume.draft.metrics;
+    const target = state.editMetrics[resume.draft.pickIndex];
+    if (target) {
+      target.selector = resume.pick.selector;
+      target.pickedText = resume.pick.text;
+      if (!target.url) target.url = resume.pick.url;
+    }
+  } else if (id) {
+    for (const mon of monitorsForItem(id)) {
+      const m = {
+        id: mon.id,
+        label: mon.name || '',
+        kind: mon.kind || 'page',
+        url: mon.kind === 'page' ? mon.url || '' : '',
+        selector: mon.selector || '',
+        pickedText: '',
+        keyword: mon.keyword || '',
+        apiUrl: '',
+        apiKey: '',
+        apiPath: '',
+        apiVaultId: mon.api_vault_id || fv.value,
+        unit: mon.unit || '',
+        threshold: mon.threshold ?? '',
+        locked: false,
+      };
+      if (mon.kind === 'api') {
+        const cfg = await decryptApiConfig(mon);
+        if (cfg) {
+          m.apiUrl = cfg.apiUrl || '';
+          m.apiKey = cfg.apiKey || '';
+          m.apiPath = cfg.jsonPath || '';
+        } else {
+          m.locked = true;
+        }
+      }
+      state.editMetrics.push(m);
     }
   }
-
-  const selector = resume ? resume.pick.selector : mon?.selector || '';
-  $('m-picked').classList.add('hidden');
-  if (selector) {
-    $('m-picked').textContent = resume
-      ? `Picked: "${resume.pick.text}"`
-      : 'A picked element is saved for this monitor.';
-    $('m-picked').classList.remove('hidden');
-  }
-  $('m-picked').dataset.selector = selector;
-  updateMonitorFieldsUI();
+  renderMetricList();
 
   const del = $('btn-delete');
   del.classList.toggle('hidden', !entry);
@@ -868,63 +863,58 @@ $('btn-save').addEventListener('click', async () => {
     );
   }
 
-  // Validate the credit-monitor sub-form before anything is written.
-  const monWanted = $('f-monitor').checked;
-  let monBody = null;
-  if (monWanted) {
-    const kind = $('m-kind').value;
-    const thr = $('m-threshold').value;
-    monBody = {
-      name: title,
-      kind,
-      unit: $('m-unit').value.trim() || null,
+  // Validate every metric sub-form before anything is written.
+  const metricBodies = [];
+  for (const m of state.editMetrics) {
+    if (m.locked) continue; // untouched - only key-vault members may edit
+    const label = (m.label || '').trim() || 'Credits';
+    const thr = String(m.threshold ?? '').trim();
+    const body = {
+      name: label,
+      kind: m.kind,
+      unit: (m.unit || '').trim() || null,
       threshold: thr === '' ? null : Number(thr),
     };
-    if (kind === 'page') {
-      const murl = $('m-url').value.trim() || $('f-url').value.trim();
-      const keyword = $('m-keyword').value.trim();
-      const selector = $('m-picked').dataset.selector || '';
-      if (!murl) return showError('edit-error', 'Monitor: the dashboard URL is required.');
-      if (!selector && !keyword) {
+    if (m.kind === 'page') {
+      const murl = (m.url || '').trim() || $('f-url').value.trim();
+      if (!murl) return showError('edit-error', `"${label}": the dashboard URL is required.`);
+      if (!m.selector && !(m.keyword || '').trim()) {
         return showError(
           'edit-error',
-          'Monitor: pick the number on the dashboard page, or give a keyword to find it by.'
+          `"${label}": pick the number on the dashboard page, or give a keyword to find it by.`
         );
       }
-      Object.assign(monBody, {
+      Object.assign(body, {
         url: murl,
-        selector: selector || null,
-        keyword: keyword || null,
+        selector: m.selector || null,
+        keyword: (m.keyword || '').trim() || null,
         api_vault_id: null,
         api_iv: null,
         api_enc: null,
       });
     } else {
-      if (state.apiConfigLocked) {
-        return showError('edit-error', "Monitor: only a member of the key's vault can edit it.");
-      }
       const cfg = {
-        apiUrl: $('m-api-url').value.trim(),
-        apiKey: $('m-api-key').value.trim(),
-        jsonPath: $('m-api-path').value.trim(),
+        apiUrl: (m.apiUrl || '').trim(),
+        apiKey: (m.apiKey || '').trim(),
+        jsonPath: (m.apiPath || '').trim(),
       };
       if (!/^https:\/\//.test(cfg.apiUrl)) {
-        return showError('edit-error', 'Monitor: enter the full https:// API URL.');
+        return showError('edit-error', `"${label}": enter the full https:// API URL.`);
       }
-      if (!cfg.apiKey) return showError('edit-error', 'Monitor: paste the API key.');
-      const keyVaultId = $('m-api-vault').value;
-      const keyVaultKey = state.vaultKeys.get(keyVaultId);
-      if (!keyVaultKey) return showError('edit-error', 'Monitor: pick a vault for the key.');
+      if (!cfg.apiKey) return showError('edit-error', `"${label}": paste the API key.`);
+      const keyVaultKey = state.vaultKeys.get(m.apiVaultId);
+      if (!keyVaultKey) return showError('edit-error', `"${label}": pick a vault for the key.`);
       const enc = await encryptJson(keyVaultKey, cfg);
-      Object.assign(monBody, {
+      Object.assign(body, {
         url: new URL(cfg.apiUrl).origin,
         selector: null,
         keyword: null,
-        api_vault_id: keyVaultId,
+        api_vault_id: m.apiVaultId,
         api_iv: enc.iv,
         api_enc: enc.ct,
       });
     }
+    metricBodies.push({ id: m.id, body });
   }
 
   const now = new Date().toISOString();
@@ -966,26 +956,29 @@ $('btn-save').addEventListener('click', async () => {
       api.logEvent('item.create', { item_id: itemId, vault_id: vaultId });
     }
 
-    // Credit monitor: create / update / remove alongside the entry.
+    // Metrics: upsert every sub-form, delete the removed ones.
     let saveMsg = 'Saved';
-    const existingMon = monitorForItem(itemId);
     try {
-      if (!monWanted && existingMon) {
-        await api.rest(`/tool_monitors?id=eq.${existingMon.id}`, { method: 'DELETE' });
-        state.monitors = state.monitors.filter((m) => m.id !== existingMon.id);
-      } else if (monBody) {
-        monBody.item_id = itemId;
-        if (existingMon) {
-          await api.rest(`/tool_monitors?id=eq.${existingMon.id}`, {
-            method: 'PATCH',
-            body: monBody,
-          });
-          Object.assign(existingMon, monBody);
-          captureMonitor(existingMon, { silent: true }).then((ok) => ok && renderList());
+      const keepIds = new Set(state.editMetrics.filter((m) => m.id).map((m) => m.id));
+      for (const em of monitorsForItem(itemId)) {
+        if (!keepIds.has(em.id)) {
+          await api.rest(`/tool_monitors?id=eq.${em.id}`, { method: 'DELETE' });
+          state.monitors = state.monitors.filter((x) => x.id !== em.id);
+        }
+      }
+      for (const { id: monId, body } of metricBodies) {
+        body.item_id = itemId;
+        if (monId) {
+          await api.rest(`/tool_monitors?id=eq.${monId}`, { method: 'PATCH', body });
+          const mon = state.monitors.find((x) => x.id === monId);
+          if (mon) {
+            Object.assign(mon, body);
+            captureMonitor(mon, { silent: true }).then((ok) => ok && renderList());
+          }
         } else {
           const [monRow] = await api.rest('/tool_monitors?select=*', {
             method: 'POST',
-            body: monBody,
+            body,
             prefer: 'return=representation',
           });
           state.monitors.push(monRow);
@@ -994,7 +987,7 @@ $('btn-save').addEventListener('click', async () => {
         }
       }
     } catch (err) {
-      saveMsg = `Entry saved, but the monitor failed: ${err.message}`;
+      saveMsg = `Entry saved, but monitors failed: ${err.message}`;
     }
 
     await keychain.resetAutoLock();
@@ -1393,37 +1386,43 @@ function timeAgo(iso) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-function monitorForItem(itemId) {
-  return state.monitors.find((m) => m.item_id === itemId) || null;
+function monitorsForItem(itemId) {
+  return state.monitors.filter((m) => m.item_id === itemId);
 }
 
-// The "own box" under an entry showing its remaining credits.
-function creditBox(mon) {
+// The "own box" under an entry: one row per tracked metric
+// (e.g. Credits and Bandwidth for a proxy).
+function creditBox(mons) {
   const box = document.createElement('div');
-  box.className = 'credit-box' + (monitorIsLow(mon) ? ' low' : '');
+  box.className = 'credit-box';
+  for (const mon of mons) {
+    const row = document.createElement('div');
+    row.className = 'credit-metric' + (monitorIsLow(mon) ? ' low' : '');
 
-  const info = document.createElement('div');
-  info.className = 'credit-info';
-  const label = document.createElement('div');
-  label.className = 'credit-label';
-  label.textContent = mon.kind === 'api' ? 'Remaining credits - live' : 'Remaining credits';
-  const value = document.createElement('div');
-  value.className = 'credit-value';
-  value.textContent =
-    mon.last_numeric === null || mon.last_numeric === undefined
-      ? 'not read yet'
-      : formatMonitorValue(mon);
-  info.append(label, value);
+    const info = document.createElement('div');
+    info.className = 'credit-info';
+    const label = document.createElement('div');
+    label.className = 'credit-label';
+    label.textContent = `${mon.name || 'Credits'}${mon.kind === 'api' ? ' - live' : ''}`;
+    const value = document.createElement('div');
+    value.className = 'credit-value';
+    value.textContent =
+      mon.last_numeric === null || mon.last_numeric === undefined
+        ? 'not read yet'
+        : formatMonitorValue(mon);
+    info.append(label, value);
 
-  const meta = document.createElement('div');
-  meta.className = 'credit-meta';
-  meta.textContent = `${timeAgo(mon.last_checked_at)}${monitorIsLow(mon) ? ' - LOW' : ''}`;
+    const meta = document.createElement('div');
+    meta.className = 'credit-meta';
+    meta.textContent = `${timeAgo(mon.last_checked_at)}${monitorIsLow(mon) ? ' - LOW' : ''}`;
 
-  const refresh = actionBtn('refresh', 'Refresh now', async () => {
-    if (await captureMonitor(mon)) renderList();
-  });
+    const refresh = actionBtn('refresh', 'Refresh now', async () => {
+      if (await captureMonitor(mon)) renderList();
+    });
 
-  box.append(info, meta, refresh);
+    row.append(info, meta, refresh);
+    box.appendChild(row);
+  }
   return box;
 }
 
@@ -1612,40 +1611,173 @@ async function autoCaptureMonitors() {
   }
 }
 
-function updateMonitorFieldsUI() {
-  $('monitor-fields').classList.toggle('hidden', !$('f-monitor').checked);
-  updateMonitorKindUI();
-}
+// ---------- metric sub-forms (entry editor) ----------
 
-$('f-monitor').addEventListener('change', updateMonitorFieldsUI);
-
-function updateMonitorKindUI() {
-  const isApi = $('m-kind').value === 'api';
-  $('m-page-fields').classList.toggle('hidden', isApi);
-  $('m-api-fields').classList.toggle('hidden', !isApi);
-}
-
-$('m-kind').addEventListener('change', updateMonitorKindUI);
-
-$('btn-api-test').addEventListener('click', async () => {
-  hideError('m-api-result');
-  const cfg = {
-    apiUrl: $('m-api-url').value.trim(),
-    apiKey: $('m-api-key').value.trim(),
-    jsonPath: $('m-api-path').value.trim(),
+function blankMetric() {
+  const defaults = ['Credits', 'Bandwidth'];
+  return {
+    id: null,
+    label: defaults[state.editMetrics.length] || '',
+    kind: 'page',
+    url: '',
+    selector: '',
+    pickedText: '',
+    keyword: '',
+    apiUrl: '',
+    apiKey: '',
+    apiPath: '',
+    apiVaultId: $('f-vault').value,
+    unit: '',
+    threshold: '',
+    locked: false,
   };
-  if (!/^https:\/\//.test(cfg.apiUrl)) return showError('m-api-result', 'Enter the full https:// API URL.');
-  if (!cfg.apiKey) return showError('m-api-result', 'Paste the API key.');
-  const btn = $('btn-api-test');
-  btn.disabled = true;
-  try {
-    const r = await fetchApiValue(cfg, { interactive: true });
-    showError('m-api-result', `Found: ${r.numeric.toLocaleString()} (raw value: ${JSON.stringify(r.value)})`, true);
-  } catch (err) {
-    showError('m-api-result', err.message);
-  } finally {
-    btn.disabled = false;
+}
+
+function renderMetricList() {
+  const list = $('metric-list');
+  list.innerHTML = '';
+  state.editMetrics.forEach((m, i) => list.appendChild(metricBlock(m, i)));
+}
+
+function boundInput(type, m, prop, placeholder) {
+  const el = document.createElement('input');
+  el.type = type;
+  el.autocomplete = 'off';
+  el.value = m[prop] ?? '';
+  el.placeholder = placeholder;
+  el.addEventListener('input', () => (m[prop] = el.value));
+  return el;
+}
+
+function fieldLabel(text) {
+  const l = document.createElement('label');
+  l.textContent = text;
+  return l;
+}
+
+function metricBlock(m, i) {
+  const wrap = document.createElement('div');
+  wrap.className = 'metric-block';
+
+  if (m.locked) {
+    const note = document.createElement('p');
+    note.className = 'muted';
+    note.textContent = `"${m.label || 'Metric'}" uses an API key stored in a vault you're not in - only members of that vault can edit or remove it.`;
+    wrap.appendChild(note);
+    return wrap;
   }
+
+  const head = document.createElement('div');
+  head.className = 'row';
+  const label = boundInput('text', m, 'label', 'Metric name, e.g. Bandwidth');
+  label.classList.add('grow');
+  const kind = document.createElement('select');
+  kind.append(new Option('Dashboard page', 'page'), new Option("Tool's API", 'api'));
+  kind.value = m.kind;
+  const remove = document.createElement('button');
+  remove.className = 'btn icon';
+  remove.title = 'Remove this metric';
+  remove.innerHTML = icon('trash');
+  remove.addEventListener('click', () => {
+    state.editMetrics.splice(i, 1);
+    renderMetricList();
+  });
+  head.append(label, kind, remove);
+
+  // read from the dashboard page
+  const pageDiv = document.createElement('div');
+  pageDiv.append(fieldLabel('Dashboard page (where the number is shown)'));
+  pageDiv.append(boundInput('text', m, 'url', 'https://tool.example.com/dashboard'));
+  const pick = document.createElement('button');
+  pick.className = 'btn';
+  pick.style.width = '100%';
+  pick.style.marginTop = '8px';
+  pick.textContent = 'Pick the number on the current page';
+  pick.addEventListener('click', () => launchPicker(i));
+  pageDiv.append(pick);
+  if (m.selector) {
+    const picked = document.createElement('div');
+    picked.className = 'error ok';
+    picked.textContent = m.pickedText
+      ? `Picked: "${m.pickedText}"`
+      : 'A picked element is saved for this metric.';
+    pageDiv.append(picked);
+  }
+  pageDiv.append(fieldLabel('Or find it by a nearby word'));
+  pageDiv.append(boundInput('text', m, 'keyword', 'e.g. "bandwidth" - grabs the number next to it'));
+
+  // read from the tool's API
+  const apiDiv = document.createElement('div');
+  apiDiv.append(fieldLabel('API endpoint that returns the number'));
+  apiDiv.append(boundInput('text', m, 'apiUrl', 'https://tool.example.com/api/balance'));
+  apiDiv.append(fieldLabel('API key (stored end-to-end encrypted)'));
+  apiDiv.append(boundInput('password', m, 'apiKey', 'Bearer token from the tool'));
+  apiDiv.append(fieldLabel('Response field that holds the number'));
+  apiDiv.append(boundInput('text', m, 'apiPath', 'e.g. remainingBandwidth or 0.balance'));
+  apiDiv.append(fieldLabel('Keep the key in vault'));
+  const vaultSel = document.createElement('select');
+  for (const mem of sortedVaults()) vaultSel.append(new Option(mem.vaults.name, mem.vault_id));
+  if ([...vaultSel.options].some((o) => o.value === m.apiVaultId)) vaultSel.value = m.apiVaultId;
+  vaultSel.addEventListener('change', () => (m.apiVaultId = vaultSel.value));
+  apiDiv.append(vaultSel);
+  const test = document.createElement('button');
+  test.className = 'btn';
+  test.style.width = '100%';
+  test.style.marginTop = '8px';
+  test.textContent = 'Test - fetch the value now';
+  const result = document.createElement('div');
+  result.className = 'error hidden';
+  test.addEventListener('click', async () => {
+    result.classList.add('hidden');
+    result.classList.remove('ok');
+    const cfg = { apiUrl: m.apiUrl.trim(), apiKey: m.apiKey.trim(), jsonPath: m.apiPath.trim() };
+    const show = (msg, ok) => {
+      result.textContent = msg;
+      result.classList.toggle('ok', !!ok);
+      result.classList.remove('hidden');
+    };
+    if (!/^https:\/\//.test(cfg.apiUrl)) return show('Enter the full https:// API URL.');
+    if (!cfg.apiKey) return show('Paste the API key.');
+    test.disabled = true;
+    try {
+      const r = await fetchApiValue(cfg, { interactive: true });
+      show(`Found: ${r.numeric.toLocaleString()} (raw value: ${JSON.stringify(r.value)})`, true);
+    } catch (err) {
+      show(err.message);
+    } finally {
+      test.disabled = false;
+    }
+  });
+  apiDiv.append(test, result);
+
+  const syncKind = () => {
+    pageDiv.classList.toggle('hidden', m.kind !== 'page');
+    apiDiv.classList.toggle('hidden', m.kind !== 'api');
+  };
+  kind.addEventListener('change', () => {
+    m.kind = kind.value;
+    syncKind();
+  });
+  syncKind();
+
+  const ut = document.createElement('div');
+  ut.className = 'row';
+  const unitWrap = document.createElement('div');
+  unitWrap.className = 'grow';
+  unitWrap.append(fieldLabel('Unit'), boundInput('text', m, 'unit', 'credits / GB / USD'));
+  const thrWrap = document.createElement('div');
+  const thr = boundInput('number', m, 'threshold', '');
+  thr.min = '0';
+  thrWrap.append(fieldLabel('Warn below'), thr);
+  ut.append(unitWrap, thrWrap);
+
+  wrap.append(head, pageDiv, apiDiv, ut);
+  return wrap;
+}
+
+$('btn-metric-add').addEventListener('click', () => {
+  state.editMetrics.push(blankMetric());
+  renderMetricList();
 });
 
 // Element picker injected into the page. The popup closes when the user
@@ -1754,7 +1886,7 @@ async function resumePendingPick() {
   return true;
 }
 
-$('btn-monitor-pick').addEventListener('click', async () => {
+async function launchPicker(pickIndex) {
   await chrome.storage.session.set({
     optipass_entry_draft: {
       entryId: state.editingId,
@@ -1765,10 +1897,8 @@ $('btn-monitor-pick').addEventListener('click', async () => {
       password: $('f-password').value,
       totp: $('f-totp').value,
       notes: $('f-notes').value,
-      murl: $('m-url').value,
-      keyword: $('m-keyword').value,
-      unit: $('m-unit').value,
-      threshold: $('m-threshold').value,
+      metrics: state.editMetrics,
+      pickIndex,
     },
   });
   try {
@@ -1778,7 +1908,7 @@ $('btn-monitor-pick').addEventListener('click', async () => {
   } catch {
     showError('edit-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
   }
-});
+}
 
 // ---------- go ----------
 

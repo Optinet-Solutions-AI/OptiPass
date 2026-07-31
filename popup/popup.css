@@ -447,15 +447,24 @@ textarea {
   background: var(--surface);
 }
 
-/* Remaining-credits box attached under an entry */
+/* Remaining-credits box attached under an entry; one row per metric */
 .credit-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin: 0 10px 10px 58px;
   padding: 8px 12px;
   background: var(--surface-2);
   border-radius: 10px;
+}
+
+.credit-metric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.credit-metric + .credit-metric {
+  border-top: 1px solid var(--hairline);
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 .credit-info {
@@ -500,12 +509,9 @@ textarea {
   background: var(--surface);
 }
 
-.credit-box.low {
-  background: var(--danger-tint);
-}
-
-.credit-box.low .credit-value,
-.credit-box.low .credit-meta {
+.credit-metric.low .credit-label,
+.credit-metric.low .credit-value,
+.credit-metric.low .credit-meta {
   color: var(--danger);
 }
 
@@ -573,8 +579,30 @@ textarea {
   width: 96px;
 }
 
-.monitor-toggle {
-  margin: 16px 0 4px;
+.monitor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.monitor-head label {
+  margin: 0;
+}
+
+.metric-block {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px 12px 12px;
+  background: var(--surface);
+}
+
+.metric-block label {
+  margin-top: 10px;
+}
+
+.metric-block .row:first-child {
+  margin-top: 0;
 }
 
 /* Quick-unlock PIN entry */
