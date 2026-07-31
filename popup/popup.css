@@ -409,10 +409,6 @@ textarea {
 }
 
 .entry {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
   border-radius: 10px;
 }
 
@@ -420,7 +416,15 @@ textarea {
   border-top: 1px solid var(--hairline);
 }
 
-.entry:hover {
+.entry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.entry-row:hover {
   background: var(--surface-2);
 }
 
@@ -439,8 +443,70 @@ textarea {
   text-transform: uppercase;
 }
 
-.entry:hover .entry-avatar {
+.entry-row:hover .entry-avatar {
   background: var(--surface);
+}
+
+/* Remaining-credits box attached under an entry */
+.credit-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 10px 10px 58px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+
+.credit-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.credit-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.credit-value {
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.credit-meta {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.credit-box .btn.icon {
+  width: 26px;
+  height: 26px;
+}
+
+.credit-box .btn.icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.credit-box .btn.icon:hover {
+  background: var(--surface);
+}
+
+.credit-box.low {
+  background: var(--danger-tint);
+}
+
+.credit-box.low .credit-value,
+.credit-box.low .credit-meta {
+  color: var(--danger);
 }
 
 .entry-info {
@@ -503,18 +569,12 @@ textarea {
   color: var(--danger);
 }
 
-.mon-value {
-  font-weight: 600;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.mon-value.low {
-  color: var(--danger);
-}
-
 #m-threshold {
   width: 96px;
+}
+
+.monitor-toggle {
+  margin: 16px 0 4px;
 }
 
 /* Quick-unlock PIN entry */
@@ -528,46 +588,6 @@ textarea {
 .pin-input::placeholder {
   font-size: 13px;
   letter-spacing: normal;
-}
-
-/* Credits strip on the main screen */
-.monitor-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.mon-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-family: inherit;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.mon-chip:hover {
-  background: var(--surface-2);
-}
-
-.mon-chip .val {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.mon-chip.low {
-  border-color: var(--danger);
-  background: var(--danger-tint);
-}
-
-.mon-chip.low .val {
-  color: var(--danger);
 }
 
 /* Live one-time-password preview in the editor */

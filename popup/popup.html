@@ -117,11 +117,9 @@
     </header>
     <div class="topbar">
       <select id="vault-filter"></select>
-      <button id="btn-monitors" class="btn icon" title="Tool credit monitors"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></button>
       <button id="btn-theme" class="btn icon" title="Toggle light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
       <button id="btn-admin" class="btn hidden" title="Team administration">Admin</button>
     </div>
-    <div id="monitor-strip" class="monitor-strip hidden"></div>
     <ul id="entry-list"></ul>
     <div id="empty-state" class="empty hidden">
       <p>No entries yet.</p>
@@ -159,6 +157,44 @@
     <div id="totp-preview" class="totp-preview hidden">
       <span id="totp-code" class="totp-code"></span>
       <span id="totp-left" class="muted"></span>
+    </div>
+    <label class="checkbox monitor-toggle"><input type="checkbox" id="f-monitor" /> Track remaining credits for this tool</label>
+    <div id="monitor-fields" class="hidden">
+      <label for="m-kind">How to read the value</label>
+      <select id="m-kind">
+        <option value="page">From the dashboard page (when someone visits it)</option>
+        <option value="api">From the tool's API (refreshes automatically)</option>
+      </select>
+      <div id="m-page-fields">
+        <label for="m-url">Dashboard page (where the number is shown)</label>
+        <input type="text" id="m-url" placeholder="https://enigmaproxy.net/dashboard" />
+        <button id="btn-monitor-pick" class="btn" style="width:100%">Pick the number on the current page</button>
+        <div id="m-picked" class="error ok hidden"></div>
+        <label for="m-keyword">Or find it by a nearby word</label>
+        <input type="text" id="m-keyword" placeholder='e.g. "credits" — grabs the number next to it' />
+      </div>
+      <div id="m-api-fields" class="hidden">
+        <label for="m-api-url">API endpoint that returns the balance</label>
+        <input type="text" id="m-api-url" autocomplete="off" placeholder="https://enigmaproxy.net/api/customer/packages/PKG_ID" />
+        <label for="m-api-key">API key (stored end-to-end encrypted)</label>
+        <input type="password" id="m-api-key" autocomplete="off" placeholder="Bearer token from the tool's dashboard" />
+        <label for="m-api-path">Response field that holds the number</label>
+        <input type="text" id="m-api-path" autocomplete="off" placeholder="e.g. remainingBandwidth or 0.balance" />
+        <label for="m-api-vault">Keep the key in vault</label>
+        <select id="m-api-vault"></select>
+        <button id="btn-api-test" class="btn" style="width:100%">Test &mdash; fetch the value now</button>
+        <div id="m-api-result" class="error hidden"></div>
+      </div>
+      <div class="row">
+        <div class="grow">
+          <label for="m-unit">Unit</label>
+          <input type="text" id="m-unit" placeholder="credits / GB / USD" />
+        </div>
+        <div>
+          <label for="m-threshold">Warn below</label>
+          <input type="number" id="m-threshold" min="0" />
+        </div>
+      </div>
     </div>
     <label for="f-notes">Notes</label>
     <textarea id="f-notes" rows="3"></textarea>
@@ -284,74 +320,6 @@
       </div>
       <button id="btn-vault-delete" class="btn danger full">Delete this vault</button>
     </section>
-  </div>
-
-  <!-- Tool credit monitors -->
-  <div id="screen-monitors" class="screen hidden">
-    <header class="topbar">
-      <button id="btn-monitors-back" class="btn icon" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
-      <h2 style="flex:1">Credit monitors</h2>
-      <button id="btn-monitor-add" class="btn icon" title="Add monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-    </header>
-    <p class="muted">Readings refresh automatically whenever a team member opens OptiPass while on the tool's dashboard, or by pressing a monitor's refresh button there.</p>
-    <div id="monitor-list" class="stack"></div>
-    <div id="monitors-empty" class="empty hidden">
-      <p>No monitors yet.</p>
-      <p class="muted">Open a tool's dashboard in a tab, then click <strong>+</strong>.</p>
-    </div>
-  </div>
-
-  <!-- Add / edit monitor -->
-  <div id="screen-monitor-edit" class="screen hidden">
-    <header class="topbar">
-      <button id="btn-monitor-edit-back" class="btn icon" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
-      <h2 id="monitor-edit-heading">Add monitor</h2>
-    </header>
-    <label for="m-name">Tool name</label>
-    <input type="text" id="m-name" placeholder="e.g. Enigma Proxy" />
-    <label for="m-kind">How to read the value</label>
-    <select id="m-kind">
-      <option value="page">From the dashboard page (when someone visits it)</option>
-      <option value="api">From the tool's API (refreshes automatically)</option>
-    </select>
-
-    <div id="m-page-fields">
-      <label for="m-url">Dashboard page (where the number is shown)</label>
-      <input type="text" id="m-url" placeholder="https://enigmaproxy.net/dashboard" />
-      <label>Value to track</label>
-      <button id="btn-monitor-pick" class="btn" style="width:100%">Pick the number on the current page</button>
-      <div id="m-picked" class="error ok hidden"></div>
-      <label for="m-keyword">Or find it by a nearby word</label>
-      <input type="text" id="m-keyword" placeholder='e.g. "credits" — grabs the number next to it' />
-    </div>
-
-    <div id="m-api-fields" class="hidden">
-      <label for="m-api-url">API endpoint that returns the balance</label>
-      <input type="text" id="m-api-url" autocomplete="off" placeholder="https://enigmaproxy.net/api/customer/packages/PKG_ID" />
-      <label for="m-api-key">API key (stored end-to-end encrypted)</label>
-      <input type="password" id="m-api-key" autocomplete="off" placeholder="Bearer token from the tool's dashboard" />
-      <label for="m-api-path">Response field that holds the number</label>
-      <input type="text" id="m-api-path" autocomplete="off" placeholder="e.g. remainingBandwidth or 0.balance" />
-      <label for="m-api-vault">Keep the key in vault</label>
-      <select id="m-api-vault"></select>
-      <button id="btn-api-test" class="btn" style="width:100%">Test &mdash; fetch the value now</button>
-      <div id="m-api-result" class="error hidden"></div>
-    </div>
-    <div class="row">
-      <div class="grow">
-        <label for="m-unit">Unit</label>
-        <input type="text" id="m-unit" placeholder="credits / GB / USD" />
-      </div>
-      <div>
-        <label for="m-threshold">Warn below</label>
-        <input type="number" id="m-threshold" min="0" />
-      </div>
-    </div>
-    <div id="monitor-error" class="error hidden"></div>
-    <div class="row actions">
-      <button id="btn-monitor-save" class="btn primary grow">Save</button>
-      <button id="btn-monitor-delete" class="btn danger hidden">Delete</button>
-    </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>

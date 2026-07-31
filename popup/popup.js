@@ -48,13 +48,12 @@ const state = {
   loginMode: 'signin', // or 'signup'
   adminProfiles: [],
   monitors: [],
-  editingMonitorId: null,
   apiConfigLocked: false,
 };
 
 // ---------- screens / feedback ----------
 
-const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'settings', 'admin', 'monitors', 'monitor-edit'];
+const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'settings', 'admin'];
 
 function showScreen(name) {
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
@@ -507,10 +506,14 @@ async function enterMain() {
   } catch {
     state.monitors = []; // table may not exist until migration 002 runs
   }
+  try {
+    await adoptOrphanMonitors(); // attach pre-004 monitors to matching entries
+  } catch {
+    /* best effort */
+  }
   populateVaultSelects();
   $('btn-admin').classList.toggle('hidden', !['admin', 'super_admin'].includes(state.profile.role));
   renderList();
-  renderMonitorStrip();
   if (await resumePendingPick()) return; // finish an in-progress monitor pick
   showScreen('main');
   autoCaptureMonitors(); // fire-and-forget refresh for the current site
@@ -576,14 +579,6 @@ function renderList() {
       vb.textContent = m.vaults.name;
       sub.appendChild(vb);
     }
-    const mon = monitorForEntry(entry);
-    if (mon && mon.last_numeric !== null && mon.last_numeric !== undefined) {
-      const cb = document.createElement('span');
-      cb.className = 'badge' + (monitorIsLow(mon) ? ' low' : ' gray');
-      cb.textContent = formatMonitorValue(mon);
-      cb.title = `${mon.name} - checked ${timeAgo(mon.last_checked_at)}`;
-      sub.appendChild(cb);
-    }
     info.append(title, sub);
 
     const actions = document.createElement('div');
@@ -602,7 +597,14 @@ function renderList() {
       actions.append(actionBtn('pen', 'Edit', () => openEdit(entry.id)));
     }
 
-    li.append(avatar, info, actions);
+    const row = document.createElement('div');
+    row.className = 'entry-row';
+    row.append(avatar, info, actions);
+    li.appendChild(row);
+
+    const mon = monitorForItem(entry.id);
+    if (mon) li.appendChild(creditBox(mon));
+
     list.appendChild(li);
   }
 }
@@ -724,8 +726,9 @@ async function fillCredentials(entry) {
 
 // ---------- add / edit ----------
 
-function openEdit(id) {
+async function openEdit(id, resume = null) {
   state.editingId = id;
+  state.apiConfigLocked = false;
   state.revealPassword = false;
   $('f-password').type = 'password';
   hideError('edit-error');
@@ -733,21 +736,73 @@ function openEdit(id) {
   const entry = id ? state.items.find((e) => e.id === id) : null;
   $('edit-heading').textContent = entry ? 'Edit entry' : 'Add entry';
 
+  const d = resume?.draft;
   const fv = $('f-vault');
-  if (entry) {
+  if (d?.vault && [...fv.options].some((o) => o.value === d.vault)) {
+    fv.value = d.vault;
+  } else if (entry) {
     fv.value = entry.vault_id;
   } else {
     const filter = $('vault-filter').value;
     if (filter !== 'all' && vaultWritable(filter)) fv.value = filter;
   }
 
-  $('f-title').value = entry?.data.title || '';
-  $('f-url').value = entry?.data.url ?? (entry ? '' : state.activeHost || '');
-  $('f-username').value = entry?.data.username || '';
-  $('f-password').value = entry?.data.password || '';
-  $('f-totp').value = entry?.data.totp || '';
-  $('f-notes').value = entry?.data.notes || '';
+  $('f-title').value = d?.title ?? entry?.data.title ?? '';
+  $('f-url').value = d?.url ?? entry?.data.url ?? (entry ? '' : state.activeHost || '');
+  $('f-username').value = d?.username ?? entry?.data.username ?? '';
+  $('f-password').value = d?.password ?? entry?.data.password ?? '';
+  $('f-totp').value = d?.totp ?? entry?.data.totp ?? '';
+  $('f-notes').value = d?.notes ?? entry?.data.notes ?? '';
   updateTotpPreview();
+
+  // ----- credit monitor sub-form -----
+  const mon = id ? monitorForItem(id) : null;
+  const vaultSel = $('m-api-vault');
+  vaultSel.innerHTML = '';
+  for (const m of sortedVaults()) vaultSel.append(new Option(m.vaults.name, m.vault_id));
+  if (mon?.api_vault_id && [...vaultSel.options].some((o) => o.value === mon.api_vault_id)) {
+    vaultSel.value = mon.api_vault_id;
+  } else if ([...vaultSel.options].some((o) => o.value === fv.value)) {
+    vaultSel.value = fv.value; // default: same vault as the entry
+  }
+
+  $('f-monitor').checked = !!mon || !!resume;
+  $('m-kind').value = resume ? 'page' : mon?.kind || 'page';
+  $('m-url').value = resume
+    ? d?.murl || resume.pick.url
+    : (mon?.kind === 'page' && mon?.url) || '';
+  $('m-keyword').value = d?.keyword ?? mon?.keyword ?? '';
+  $('m-unit').value = d?.unit ?? mon?.unit ?? '';
+  $('m-threshold').value = d?.threshold ?? mon?.threshold ?? '';
+  $('m-api-url').value = '';
+  $('m-api-key').value = '';
+  $('m-api-path').value = '';
+  hideError('m-api-result');
+  if (mon && mon.kind === 'api' && !resume) {
+    const cfg = await decryptApiConfig(mon);
+    if (cfg) {
+      $('m-api-url').value = cfg.apiUrl || '';
+      $('m-api-key').value = cfg.apiKey || '';
+      $('m-api-path').value = cfg.jsonPath || '';
+    } else {
+      state.apiConfigLocked = true;
+      showError(
+        'm-api-result',
+        "You aren't in the vault holding this monitor's API key, so only a member of that vault can edit it."
+      );
+    }
+  }
+
+  const selector = resume ? resume.pick.selector : mon?.selector || '';
+  $('m-picked').classList.add('hidden');
+  if (selector) {
+    $('m-picked').textContent = resume
+      ? `Picked: "${resume.pick.text}"`
+      : 'A picked element is saved for this monitor.';
+    $('m-picked').classList.remove('hidden');
+  }
+  $('m-picked').dataset.selector = selector;
+  updateMonitorFieldsUI();
 
   const del = $('btn-delete');
   del.classList.toggle('hidden', !entry);
@@ -813,6 +868,65 @@ $('btn-save').addEventListener('click', async () => {
     );
   }
 
+  // Validate the credit-monitor sub-form before anything is written.
+  const monWanted = $('f-monitor').checked;
+  let monBody = null;
+  if (monWanted) {
+    const kind = $('m-kind').value;
+    const thr = $('m-threshold').value;
+    monBody = {
+      name: title,
+      kind,
+      unit: $('m-unit').value.trim() || null,
+      threshold: thr === '' ? null : Number(thr),
+    };
+    if (kind === 'page') {
+      const murl = $('m-url').value.trim() || $('f-url').value.trim();
+      const keyword = $('m-keyword').value.trim();
+      const selector = $('m-picked').dataset.selector || '';
+      if (!murl) return showError('edit-error', 'Monitor: the dashboard URL is required.');
+      if (!selector && !keyword) {
+        return showError(
+          'edit-error',
+          'Monitor: pick the number on the dashboard page, or give a keyword to find it by.'
+        );
+      }
+      Object.assign(monBody, {
+        url: murl,
+        selector: selector || null,
+        keyword: keyword || null,
+        api_vault_id: null,
+        api_iv: null,
+        api_enc: null,
+      });
+    } else {
+      if (state.apiConfigLocked) {
+        return showError('edit-error', "Monitor: only a member of the key's vault can edit it.");
+      }
+      const cfg = {
+        apiUrl: $('m-api-url').value.trim(),
+        apiKey: $('m-api-key').value.trim(),
+        jsonPath: $('m-api-path').value.trim(),
+      };
+      if (!/^https:\/\//.test(cfg.apiUrl)) {
+        return showError('edit-error', 'Monitor: enter the full https:// API URL.');
+      }
+      if (!cfg.apiKey) return showError('edit-error', 'Monitor: paste the API key.');
+      const keyVaultId = $('m-api-vault').value;
+      const keyVaultKey = state.vaultKeys.get(keyVaultId);
+      if (!keyVaultKey) return showError('edit-error', 'Monitor: pick a vault for the key.');
+      const enc = await encryptJson(keyVaultKey, cfg);
+      Object.assign(monBody, {
+        url: new URL(cfg.apiUrl).origin,
+        selector: null,
+        keyword: null,
+        api_vault_id: keyVaultId,
+        api_iv: enc.iv,
+        api_enc: enc.ct,
+      });
+    }
+  }
+
   const now = new Date().toISOString();
   const existing = state.editingId ? state.items.find((e) => e.id === state.editingId) : null;
   const data = {
@@ -831,6 +945,7 @@ $('btn-save').addEventListener('click', async () => {
   btn.disabled = true;
   try {
     const { iv, ct } = await encryptJson(key, data);
+    let itemId;
     if (existing) {
       await api.rest(`/items?id=eq.${existing.id}`, {
         method: 'PATCH',
@@ -838,7 +953,8 @@ $('btn-save').addEventListener('click', async () => {
       });
       existing.vault_id = vaultId;
       existing.data = data;
-      api.logEvent('item.update', { item_id: existing.id, vault_id: vaultId });
+      itemId = existing.id;
+      api.logEvent('item.update', { item_id: itemId, vault_id: vaultId });
     } else {
       const [row] = await api.rest('/items?select=id', {
         method: 'POST',
@@ -846,12 +962,45 @@ $('btn-save').addEventListener('click', async () => {
         prefer: 'return=representation',
       });
       state.items.push({ id: row.id, vault_id: vaultId, data });
-      api.logEvent('item.create', { item_id: row.id, vault_id: vaultId });
+      itemId = row.id;
+      api.logEvent('item.create', { item_id: itemId, vault_id: vaultId });
     }
+
+    // Credit monitor: create / update / remove alongside the entry.
+    let saveMsg = 'Saved';
+    const existingMon = monitorForItem(itemId);
+    try {
+      if (!monWanted && existingMon) {
+        await api.rest(`/tool_monitors?id=eq.${existingMon.id}`, { method: 'DELETE' });
+        state.monitors = state.monitors.filter((m) => m.id !== existingMon.id);
+      } else if (monBody) {
+        monBody.item_id = itemId;
+        if (existingMon) {
+          await api.rest(`/tool_monitors?id=eq.${existingMon.id}`, {
+            method: 'PATCH',
+            body: monBody,
+          });
+          Object.assign(existingMon, monBody);
+          captureMonitor(existingMon, { silent: true }).then((ok) => ok && renderList());
+        } else {
+          const [monRow] = await api.rest('/tool_monitors?select=*', {
+            method: 'POST',
+            body: monBody,
+            prefer: 'return=representation',
+          });
+          state.monitors.push(monRow);
+          api.logEvent('monitor.create', { monitor_id: monRow.id, item_id: itemId });
+          captureMonitor(monRow, { silent: true }).then((ok) => ok && renderList());
+        }
+      }
+    } catch (err) {
+      saveMsg = `Entry saved, but the monitor failed: ${err.message}`;
+    }
+
     await keychain.resetAutoLock();
     renderList();
     showScreen('main');
-    toast('Saved');
+    toast(saveMsg);
   } catch (err) {
     showError('edit-error', err.message);
   } finally {
@@ -1244,84 +1393,64 @@ function timeAgo(iso) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-// Compact credits strip shown at the top of the main vault screen.
-function renderMonitorStrip() {
-  const strip = $('monitor-strip');
-  strip.innerHTML = '';
-  strip.classList.toggle('hidden', state.monitors.length === 0);
+function monitorForItem(itemId) {
+  return state.monitors.find((m) => m.item_id === itemId) || null;
+}
+
+// The "own box" under an entry showing its remaining credits.
+function creditBox(mon) {
+  const box = document.createElement('div');
+  box.className = 'credit-box' + (monitorIsLow(mon) ? ' low' : '');
+
+  const info = document.createElement('div');
+  info.className = 'credit-info';
+  const label = document.createElement('div');
+  label.className = 'credit-label';
+  label.textContent = mon.kind === 'api' ? 'Remaining credits - live' : 'Remaining credits';
+  const value = document.createElement('div');
+  value.className = 'credit-value';
+  value.textContent =
+    mon.last_numeric === null || mon.last_numeric === undefined
+      ? 'not read yet'
+      : formatMonitorValue(mon);
+  info.append(label, value);
+
+  const meta = document.createElement('div');
+  meta.className = 'credit-meta';
+  meta.textContent = `${timeAgo(mon.last_checked_at)}${monitorIsLow(mon) ? ' - LOW' : ''}`;
+
+  const refresh = actionBtn('refresh', 'Refresh now', async () => {
+    if (await captureMonitor(mon)) renderList();
+  });
+
+  box.append(info, meta, refresh);
+  return box;
+}
+
+// Older monitors (created before they lived on entries) get attached
+// to the first entry whose site matches. Best effort, runs quietly.
+async function adoptOrphanMonitors() {
   for (const mon of state.monitors) {
-    const chip = document.createElement('button');
-    chip.className = 'mon-chip' + (monitorIsLow(mon) ? ' low' : '');
-    chip.title = `${mon.name} - checked ${timeAgo(mon.last_checked_at)}. Click to manage monitors.`;
-    const name = document.createElement('span');
-    name.textContent = mon.name;
-    const val = document.createElement('span');
-    val.className = 'val';
-    val.textContent =
-      mon.last_numeric === null || mon.last_numeric === undefined
-        ? '—'
-        : formatMonitorValue(mon);
-    chip.append(name, val);
-    chip.addEventListener('click', () => {
-      renderMonitors();
-      showScreen('monitors');
+    if (mon.item_id) continue;
+    const mh = monitorHost(mon.url);
+    if (!mh) continue;
+    const entry = state.items.find((e) => {
+      if (!e.data.url) return false;
+      try {
+        const raw = e.data.url.includes('://') ? e.data.url : `https://${e.data.url}`;
+        const eh = new URL(raw).hostname.replace(/^www\./, '');
+        return eh === mh || eh.endsWith(`.${mh}`) || mh.endsWith(`.${eh}`);
+      } catch {
+        return false;
+      }
     });
-    strip.appendChild(chip);
-  }
-}
-
-// Monitor whose host matches an entry's site, if any.
-function monitorForEntry(entry) {
-  if (!entry.data.url) return null;
-  let host;
-  try {
-    const raw = entry.data.url.includes('://') ? entry.data.url : `https://${entry.data.url}`;
-    host = new URL(raw).hostname.replace(/^www\./, '');
-  } catch {
-    return null;
-  }
-  return (
-    state.monitors.find((m) => {
-      const mh = monitorHost(m.url);
-      return mh && (mh === host || mh.endsWith(`.${host}`) || host.endsWith(`.${mh}`));
-    }) || null
-  );
-}
-
-function renderMonitors() {
-  renderMonitorStrip();
-  const list = $('monitor-list');
-  list.innerHTML = '';
-  $('monitors-empty').classList.toggle('hidden', state.monitors.length > 0);
-
-  for (const mon of state.monitors) {
-    const row = document.createElement('div');
-    row.className = 'person';
-
-    const who = document.createElement('div');
-    who.className = 'who';
-    who.textContent = mon.name;
-    if (monitorIsLow(mon)) {
-      const b = document.createElement('span');
-      b.className = 'badge low';
-      b.textContent = 'low';
-      who.appendChild(b);
+    if (entry) {
+      await api.rest(`/tool_monitors?id=eq.${mon.id}`, {
+        method: 'PATCH',
+        body: { item_id: entry.id },
+      });
+      mon.item_id = entry.id;
     }
-    const small = document.createElement('small');
-    small.textContent = `${monitorHost(mon.url) || mon.url}${mon.kind === 'api' ? ' - API' : ''} - ${timeAgo(mon.last_checked_at)}`;
-    who.appendChild(small);
-
-    const value = document.createElement('div');
-    value.className = 'mon-value' + (monitorIsLow(mon) ? ' low' : '');
-    value.textContent = formatMonitorValue(mon);
-
-    const refresh = actionBtn('refresh', 'Refresh now', async () => {
-      if (await captureMonitor(mon)) renderMonitors();
-    });
-    const edit = actionBtn('pen', 'Edit monitor', () => openMonitorEdit(mon.id));
-
-    row.append(who, value, refresh, edit);
-    list.appendChild(row);
   }
 }
 
@@ -1478,68 +1607,17 @@ async function autoCaptureMonitors() {
     }
     if (await captureMonitor(mon, { silent: true })) {
       toast(`${mon.name}: ${formatMonitorValue(mon)}${monitorIsLow(mon) ? ' - LOW' : ''}`);
-      renderMonitorStrip();
       renderList();
     }
   }
 }
 
-async function openMonitorEdit(id, prefill = null) {
-  state.editingMonitorId = id;
-  state.apiConfigLocked = false;
-  const mon = id ? state.monitors.find((m) => m.id === id) : null;
-  const src = prefill || mon || {};
-  $('monitor-edit-heading').textContent = mon ? 'Edit monitor' : 'Add monitor';
-  $('m-name').value = src.name || '';
-  $('m-url').value = src.url || state.activeUrl || '';
-  $('m-keyword').value = src.keyword || '';
-  $('m-unit').value = src.unit || '';
-  $('m-threshold').value = src.threshold ?? '';
-  $('m-kind').value = src.kind || 'page';
-
-  // Vault options for holding an API key
-  const vaultSel = $('m-api-vault');
-  vaultSel.innerHTML = '';
-  for (const m of sortedVaults()) vaultSel.append(new Option(m.vaults.name, m.vault_id));
-
-  $('m-api-url').value = '';
-  $('m-api-key').value = '';
-  $('m-api-path').value = '';
-  hideError('m-api-result');
-  if (mon && mon.kind === 'api') {
-    if ([...vaultSel.options].some((o) => o.value === mon.api_vault_id)) {
-      vaultSel.value = mon.api_vault_id;
-    }
-    const cfg = await decryptApiConfig(mon);
-    if (cfg) {
-      $('m-api-url').value = cfg.apiUrl || '';
-      $('m-api-key').value = cfg.apiKey || '';
-      $('m-api-path').value = cfg.jsonPath || '';
-    } else {
-      state.apiConfigLocked = true;
-      showError(
-        'm-api-result',
-        "You aren't in the vault holding this monitor's API key, so only a member of that vault can edit it."
-      );
-    }
-  }
-
-  $('m-picked').classList.add('hidden');
-  if (src.selector) {
-    $('m-picked').textContent = prefill?.pickedText
-      ? `Picked: "${prefill.pickedText}"`
-      : 'A picked element is saved for this monitor.';
-    $('m-picked').classList.remove('hidden');
-  }
-  $('m-picked').dataset.selector = src.selector || '';
-  hideError('monitor-error');
+function updateMonitorFieldsUI() {
+  $('monitor-fields').classList.toggle('hidden', !$('f-monitor').checked);
   updateMonitorKindUI();
-  const del = $('btn-monitor-delete');
-  del.classList.toggle('hidden', !mon);
-  del.textContent = 'Delete';
-  del.dataset.confirming = '';
-  showScreen('monitor-edit');
 }
+
+$('f-monitor').addEventListener('change', updateMonitorFieldsUI);
 
 function updateMonitorKindUI() {
   const isApi = $('m-kind').value === 'api';
@@ -1664,47 +1742,30 @@ function injectedPicker() {
   document.addEventListener('keydown', key, true);
 }
 
+// The popup closes when the user clicks the page, so stash the whole
+// entry form as a draft and resume editing when the popup reopens.
 async function resumePendingPick() {
-  const o = await chrome.storage.session.get(['optipass_pending_pick', 'optipass_monitor_draft']);
+  const o = await chrome.storage.session.get(['optipass_pending_pick', 'optipass_entry_draft']);
   const pick = o.optipass_pending_pick;
   if (!pick) return false;
-  await chrome.storage.session.remove(['optipass_pending_pick', 'optipass_monitor_draft']);
-  const draft = o.optipass_monitor_draft || {};
-  await openMonitorEdit(draft.id || null, {
-    name: draft.name || (pick.title || '').split(/[|\-–—:·]/)[0].trim().slice(0, 40),
-    url: draft.url || pick.url,
-    selector: pick.selector,
-    keyword: draft.keyword || '',
-    unit: draft.unit || '',
-    threshold: draft.threshold || '',
-    pickedText: pick.text,
-  });
+  await chrome.storage.session.remove(['optipass_pending_pick', 'optipass_entry_draft']);
+  const draft = o.optipass_entry_draft || {};
+  await openEdit(draft.entryId || null, { draft, pick });
   return true;
 }
 
-$('btn-monitors').addEventListener('click', async () => {
-  try {
-    await fetchMonitors();
-  } catch {
-    toast('Run migration-002-tool-monitors.sql in Supabase first');
-  }
-  renderMonitors();
-  showScreen('monitors');
-});
-
-$('btn-monitors-back').addEventListener('click', () => showScreen('main'));
-$('btn-monitor-add').addEventListener('click', () => openMonitorEdit(null));
-$('btn-monitor-edit-back').addEventListener('click', () => {
-  renderMonitors();
-  showScreen('monitors');
-});
-
 $('btn-monitor-pick').addEventListener('click', async () => {
   await chrome.storage.session.set({
-    optipass_monitor_draft: {
-      id: state.editingMonitorId,
-      name: $('m-name').value,
-      url: $('m-url').value,
+    optipass_entry_draft: {
+      entryId: state.editingId,
+      vault: $('f-vault').value,
+      title: $('f-title').value,
+      url: $('f-url').value,
+      username: $('f-username').value,
+      password: $('f-password').value,
+      totp: $('f-totp').value,
+      notes: $('f-notes').value,
+      murl: $('m-url').value,
       keyword: $('m-keyword').value,
       unit: $('m-unit').value,
       threshold: $('m-threshold').value,
@@ -1715,105 +1776,7 @@ $('btn-monitor-pick').addEventListener('click', async () => {
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: injectedPicker });
     window.close(); // hand control to the page; the pick resumes on reopen
   } catch {
-    showError('monitor-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
-  }
-});
-
-$('btn-monitor-save').addEventListener('click', async () => {
-  hideError('monitor-error');
-  const kind = $('m-kind').value;
-  const name = $('m-name').value.trim();
-  if (!name) return showError('monitor-error', 'Name the tool.');
-  const thr = $('m-threshold').value;
-  const body = {
-    name,
-    kind,
-    unit: $('m-unit').value.trim() || null,
-    threshold: thr === '' ? null : Number(thr),
-  };
-
-  if (kind === 'page') {
-    const url = $('m-url').value.trim();
-    const keyword = $('m-keyword').value.trim();
-    const selector = $('m-picked').dataset.selector || '';
-    if (!url) return showError('monitor-error', 'The dashboard URL is required.');
-    if (!selector && !keyword) {
-      return showError('monitor-error', 'Pick the number on the page, or give a keyword to find it by.');
-    }
-    Object.assign(body, {
-      url,
-      selector: selector || null,
-      keyword: keyword || null,
-      api_vault_id: null,
-      api_iv: null,
-      api_enc: null,
-    });
-  } else {
-    if (state.apiConfigLocked) {
-      return showError('monitor-error', "Only a member of the key's vault can edit this monitor.");
-    }
-    const cfg = {
-      apiUrl: $('m-api-url').value.trim(),
-      apiKey: $('m-api-key').value.trim(),
-      jsonPath: $('m-api-path').value.trim(),
-    };
-    if (!/^https:\/\//.test(cfg.apiUrl)) return showError('monitor-error', 'Enter the full https:// API URL.');
-    if (!cfg.apiKey) return showError('monitor-error', 'Paste the API key.');
-    const vaultId = $('m-api-vault').value;
-    const vaultKey = state.vaultKeys.get(vaultId);
-    if (!vaultKey) return showError('monitor-error', 'Pick a vault for the key.');
-    const { iv, ct } = await encryptJson(vaultKey, cfg);
-    Object.assign(body, {
-      url: new URL(cfg.apiUrl).origin,
-      selector: null,
-      keyword: null,
-      api_vault_id: vaultId,
-      api_iv: iv,
-      api_enc: ct,
-    });
-  }
-  try {
-    let mon;
-    if (state.editingMonitorId) {
-      await api.rest(`/tool_monitors?id=eq.${state.editingMonitorId}`, { method: 'PATCH', body });
-      mon = state.monitors.find((m) => m.id === state.editingMonitorId);
-      Object.assign(mon, body);
-    } else {
-      const [row] = await api.rest('/tool_monitors?select=*', {
-        method: 'POST',
-        body,
-        prefer: 'return=representation',
-      });
-      state.monitors.push(row);
-      state.monitors.sort((a, b) => a.name.localeCompare(b.name));
-      mon = row;
-      api.logEvent('monitor.create', { monitor_id: row.id, name });
-    }
-    await captureMonitor(mon, { silent: true }); // grab a first reading if the tab matches
-    renderMonitors();
-    showScreen('monitors');
-    toast('Monitor saved');
-  } catch (err) {
-    showError('monitor-error', err.message);
-  }
-});
-
-$('btn-monitor-delete').addEventListener('click', async (e) => {
-  const btn = e.currentTarget;
-  if (!btn.dataset.confirming) {
-    btn.dataset.confirming = '1';
-    btn.textContent = 'Confirm delete';
-    return;
-  }
-  try {
-    await api.rest(`/tool_monitors?id=eq.${state.editingMonitorId}`, { method: 'DELETE' });
-    api.logEvent('monitor.delete', { monitor_id: state.editingMonitorId });
-    state.monitors = state.monitors.filter((m) => m.id !== state.editingMonitorId);
-    renderMonitors();
-    showScreen('monitors');
-    toast('Monitor deleted');
-  } catch (err) {
-    showError('monitor-error', err.message);
+    showError('edit-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
   }
 });
 

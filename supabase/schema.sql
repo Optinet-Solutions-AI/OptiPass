@@ -311,6 +311,7 @@ revoke update, delete on public.audit_log from authenticated;
 
 create table public.tool_monitors (
   id uuid primary key default gen_random_uuid(),
+  item_id uuid references public.items (id) on delete cascade,
   name text not null,
   url text not null,
   kind text not null default 'page' check (kind in ('page', 'api')),
