@@ -49,6 +49,7 @@ const state = {
   adminProfiles: [],
   monitors: [],
   editingMonitorId: null,
+  apiConfigLocked: false,
 };
 
 // ---------- screens / feedback ----------
@@ -1140,14 +1141,14 @@ function renderMonitors() {
       who.appendChild(b);
     }
     const small = document.createElement('small');
-    small.textContent = `${monitorHost(mon.url) || mon.url} - ${timeAgo(mon.last_checked_at)}`;
+    small.textContent = `${monitorHost(mon.url) || mon.url}${mon.kind === 'api' ? ' - API' : ''} - ${timeAgo(mon.last_checked_at)}`;
     who.appendChild(small);
 
     const value = document.createElement('div');
     value.className = 'mon-value' + (monitorIsLow(mon) ? ' low' : '');
     value.textContent = formatMonitorValue(mon);
 
-    const refresh = actionBtn('refresh', 'Refresh from the open dashboard tab', async () => {
+    const refresh = actionBtn('refresh', 'Refresh now', async () => {
       if (await captureMonitor(mon)) renderMonitors();
     });
     const edit = actionBtn('pen', 'Edit monitor', () => openMonitorEdit(mon.id));
@@ -1189,54 +1190,129 @@ function injectedExtract(selector, keyword) {
   return { text, numeric: parseNum(text) };
 }
 
+// Decrypt an API monitor's {apiUrl, apiKey, jsonPath} - only possible
+// for members of the vault that holds the key.
+async function decryptApiConfig(mon) {
+  if (mon.kind !== 'api' || !mon.api_enc || !mon.api_vault_id) return null;
+  const key = state.vaultKeys.get(mon.api_vault_id);
+  if (!key) return null;
+  try {
+    return await decryptJson(key, mon.api_iv, mon.api_enc);
+  } catch {
+    return null;
+  }
+}
+
+// "a.b.0.c" -> obj.a.b[0].c
+function pluck(obj, path) {
+  if (!path) return obj;
+  let cur = obj;
+  for (const part of path.split('.')) {
+    if (cur === null || cur === undefined) return undefined;
+    cur = cur[part.trim()];
+  }
+  return cur;
+}
+
+async function ensureOriginPermission(apiUrl, interactive) {
+  const origin = `${new URL(apiUrl).origin}/*`;
+  if (await chrome.permissions.contains({ origins: [origin] })) return true;
+  if (!interactive) return false;
+  return chrome.permissions.request({ origins: [origin] });
+}
+
+// Calls the tool's API and extracts the number. Throws readable errors.
+async function fetchApiValue(cfg, { interactive = false } = {}) {
+  if (!(await ensureOriginPermission(cfg.apiUrl, interactive))) {
+    throw new Error(
+      `OptiPass needs permission to contact ${new URL(cfg.apiUrl).hostname} - press Test once to grant it.`
+    );
+  }
+  const res = await fetch(cfg.apiUrl, {
+    headers: { Authorization: `Bearer ${cfg.apiKey}`, Accept: 'application/json' },
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`API answered ${res.status}: ${text.slice(0, 140)}`);
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`API did not return JSON: ${text.slice(0, 140)}`);
+  }
+  const v = pluck(json, (cfg.jsonPath || '').trim());
+  const numeric = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/,/g, ''));
+  if (v === undefined || Number.isNaN(numeric)) {
+    throw new Error(
+      `Field "${cfg.jsonPath}" not found. Response starts: ${JSON.stringify(json).slice(0, 180)}`
+    );
+  }
+  return { value: v, numeric };
+}
+
 async function captureMonitor(mon, { silent = false } = {}) {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.url) return false;
-    const tabHost = new URL(tab.url).hostname.replace(/^www\./, '');
-    if (monitorHost(mon.url) !== tabHost) {
-      if (!silent) toast(`Open ${monitorHost(mon.url)} in this tab first`);
-      return false;
+    let patch;
+    if (mon.kind === 'api') {
+      const cfg = await decryptApiConfig(mon);
+      if (!cfg) {
+        if (!silent) toast("You aren't in the vault holding this monitor's API key");
+        return false;
+      }
+      const r = await fetchApiValue(cfg, { interactive: !silent });
+      patch = { last_value: String(r.value), last_numeric: r.numeric };
+    } else {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.url) return false;
+      const tabHost = new URL(tab.url).hostname.replace(/^www\./, '');
+      if (monitorHost(mon.url) !== tabHost) {
+        if (!silent) toast(`Open ${monitorHost(mon.url)} in this tab first`);
+        return false;
+      }
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: injectedExtract,
+        args: [mon.selector || '', mon.keyword || ''],
+      });
+      const r = results.map((x) => x.result).find(Boolean);
+      if (!r || r.numeric === null) {
+        if (!silent) toast('Could not find the value on this page');
+        return false;
+      }
+      patch = { last_value: r.text, last_numeric: r.numeric };
     }
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: injectedExtract,
-      args: [mon.selector || '', mon.keyword || ''],
-    });
-    const r = results.map((x) => x.result).find(Boolean);
-    if (!r || r.numeric === null) {
-      if (!silent) toast('Could not find the value on this page');
-      return false;
-    }
-    const patch = {
-      last_value: r.text,
-      last_numeric: r.numeric,
-      last_checked_at: new Date().toISOString(),
-      last_checked_by: state.uid,
-    };
+    patch.last_checked_at = new Date().toISOString();
+    patch.last_checked_by = state.uid;
     await api.rest(`/tool_monitors?id=eq.${mon.id}`, { method: 'PATCH', body: patch });
     Object.assign(mon, patch);
     if (!silent) toast(`${mon.name}: ${formatMonitorValue(mon)}`);
     return true;
-  } catch {
-    if (!silent) toast('Capture failed');
+  } catch (err) {
+    if (!silent) toast(err.message || 'Capture failed');
     return false;
   }
 }
 
-// When the popup opens on a monitored site, refresh its reading quietly.
+// Quiet refresh when the popup opens: page monitors when we're on their
+// site; API monitors from anywhere once the reading is >15 min old.
 async function autoCaptureMonitors() {
-  if (!state.activeHost) return;
   for (const mon of state.monitors) {
-    if (monitorHost(mon.url) !== state.activeHost) continue;
+    if (mon.kind === 'api') {
+      const age = mon.last_checked_at
+        ? Date.now() - new Date(mon.last_checked_at).getTime()
+        : Infinity;
+      if (age < 15 * 60 * 1000) continue;
+    } else {
+      if (!state.activeHost || monitorHost(mon.url) !== state.activeHost) continue;
+    }
     if (await captureMonitor(mon, { silent: true })) {
       toast(`${mon.name}: ${formatMonitorValue(mon)}${monitorIsLow(mon) ? ' - LOW' : ''}`);
     }
   }
 }
 
-function openMonitorEdit(id, prefill = null) {
+async function openMonitorEdit(id, prefill = null) {
   state.editingMonitorId = id;
+  state.apiConfigLocked = false;
   const mon = id ? state.monitors.find((m) => m.id === id) : null;
   const src = prefill || mon || {};
   $('monitor-edit-heading').textContent = mon ? 'Edit monitor' : 'Add monitor';
@@ -1245,6 +1321,35 @@ function openMonitorEdit(id, prefill = null) {
   $('m-keyword').value = src.keyword || '';
   $('m-unit').value = src.unit || '';
   $('m-threshold').value = src.threshold ?? '';
+  $('m-kind').value = src.kind || 'page';
+
+  // Vault options for holding an API key
+  const vaultSel = $('m-api-vault');
+  vaultSel.innerHTML = '';
+  for (const m of sortedVaults()) vaultSel.append(new Option(m.vaults.name, m.vault_id));
+
+  $('m-api-url').value = '';
+  $('m-api-key').value = '';
+  $('m-api-path').value = '';
+  hideError('m-api-result');
+  if (mon && mon.kind === 'api') {
+    if ([...vaultSel.options].some((o) => o.value === mon.api_vault_id)) {
+      vaultSel.value = mon.api_vault_id;
+    }
+    const cfg = await decryptApiConfig(mon);
+    if (cfg) {
+      $('m-api-url').value = cfg.apiUrl || '';
+      $('m-api-key').value = cfg.apiKey || '';
+      $('m-api-path').value = cfg.jsonPath || '';
+    } else {
+      state.apiConfigLocked = true;
+      showError(
+        'm-api-result',
+        "You aren't in the vault holding this monitor's API key, so only a member of that vault can edit it."
+      );
+    }
+  }
+
   $('m-picked').classList.add('hidden');
   if (src.selector) {
     $('m-picked').textContent = prefill?.pickedText
@@ -1254,12 +1359,42 @@ function openMonitorEdit(id, prefill = null) {
   }
   $('m-picked').dataset.selector = src.selector || '';
   hideError('monitor-error');
+  updateMonitorKindUI();
   const del = $('btn-monitor-delete');
   del.classList.toggle('hidden', !mon);
   del.textContent = 'Delete';
   del.dataset.confirming = '';
   showScreen('monitor-edit');
 }
+
+function updateMonitorKindUI() {
+  const isApi = $('m-kind').value === 'api';
+  $('m-page-fields').classList.toggle('hidden', isApi);
+  $('m-api-fields').classList.toggle('hidden', !isApi);
+}
+
+$('m-kind').addEventListener('change', updateMonitorKindUI);
+
+$('btn-api-test').addEventListener('click', async () => {
+  hideError('m-api-result');
+  const cfg = {
+    apiUrl: $('m-api-url').value.trim(),
+    apiKey: $('m-api-key').value.trim(),
+    jsonPath: $('m-api-path').value.trim(),
+  };
+  if (!/^https:\/\//.test(cfg.apiUrl)) return showError('m-api-result', 'Enter the full https:// API URL.');
+  if (!cfg.apiKey) return showError('m-api-result', 'Paste the API key.');
+  const btn = $('btn-api-test');
+  btn.disabled = true;
+  try {
+    const r = await fetchApiValue(cfg, { interactive: true });
+    showError('m-api-result', `Found: ${r.numeric.toLocaleString()} (raw value: ${JSON.stringify(r.value)})`, true);
+  } catch (err) {
+    showError('m-api-result', err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 // Element picker injected into the page. The popup closes when the user
 // clicks the page, so the result goes to the background worker and is
@@ -1361,7 +1496,7 @@ async function resumePendingPick() {
   if (!pick) return false;
   await chrome.storage.session.remove(['optipass_pending_pick', 'optipass_monitor_draft']);
   const draft = o.optipass_monitor_draft || {};
-  openMonitorEdit(draft.id || null, {
+  await openMonitorEdit(draft.id || null, {
     name: draft.name || (pick.title || '').split(/[|\-–—:·]/)[0].trim().slice(0, 40),
     url: draft.url || pick.url,
     selector: pick.selector,
@@ -1412,24 +1547,57 @@ $('btn-monitor-pick').addEventListener('click', async () => {
 
 $('btn-monitor-save').addEventListener('click', async () => {
   hideError('monitor-error');
+  const kind = $('m-kind').value;
   const name = $('m-name').value.trim();
-  const url = $('m-url').value.trim();
-  const keyword = $('m-keyword').value.trim();
-  const selector = $('m-picked').dataset.selector || '';
   if (!name) return showError('monitor-error', 'Name the tool.');
-  if (!url) return showError('monitor-error', 'The dashboard URL is required.');
-  if (!selector && !keyword) {
-    return showError('monitor-error', 'Pick the number on the page, or give a keyword to find it by.');
-  }
   const thr = $('m-threshold').value;
   const body = {
     name,
-    url,
-    selector: selector || null,
-    keyword: keyword || null,
+    kind,
     unit: $('m-unit').value.trim() || null,
     threshold: thr === '' ? null : Number(thr),
   };
+
+  if (kind === 'page') {
+    const url = $('m-url').value.trim();
+    const keyword = $('m-keyword').value.trim();
+    const selector = $('m-picked').dataset.selector || '';
+    if (!url) return showError('monitor-error', 'The dashboard URL is required.');
+    if (!selector && !keyword) {
+      return showError('monitor-error', 'Pick the number on the page, or give a keyword to find it by.');
+    }
+    Object.assign(body, {
+      url,
+      selector: selector || null,
+      keyword: keyword || null,
+      api_vault_id: null,
+      api_iv: null,
+      api_enc: null,
+    });
+  } else {
+    if (state.apiConfigLocked) {
+      return showError('monitor-error', "Only a member of the key's vault can edit this monitor.");
+    }
+    const cfg = {
+      apiUrl: $('m-api-url').value.trim(),
+      apiKey: $('m-api-key').value.trim(),
+      jsonPath: $('m-api-path').value.trim(),
+    };
+    if (!/^https:\/\//.test(cfg.apiUrl)) return showError('monitor-error', 'Enter the full https:// API URL.');
+    if (!cfg.apiKey) return showError('monitor-error', 'Paste the API key.');
+    const vaultId = $('m-api-vault').value;
+    const vaultKey = state.vaultKeys.get(vaultId);
+    if (!vaultKey) return showError('monitor-error', 'Pick a vault for the key.');
+    const { iv, ct } = await encryptJson(vaultKey, cfg);
+    Object.assign(body, {
+      url: new URL(cfg.apiUrl).origin,
+      selector: null,
+      keyword: null,
+      api_vault_id: vaultId,
+      api_iv: iv,
+      api_enc: ct,
+    });
+  }
   try {
     let mon;
     if (state.editingMonitorId) {

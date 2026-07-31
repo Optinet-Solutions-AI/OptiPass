@@ -313,8 +313,12 @@ create table public.tool_monitors (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   url text not null,
-  selector text,
-  keyword text,
+  kind text not null default 'page' check (kind in ('page', 'api')),
+  selector text,                   -- page kind: CSS selector from the picker
+  keyword text,                    -- page kind: find the number near this word
+  api_vault_id uuid references public.vaults (id) on delete set null,
+  api_iv text,                     -- api kind: E2E-encrypted {url, key, field},
+  api_enc text,                    --   readable only by members of api_vault_id
   unit text,
   threshold numeric,
   last_value text,
