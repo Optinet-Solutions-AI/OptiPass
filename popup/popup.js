@@ -421,6 +421,7 @@ async function enterMain() {
   populateVaultSelects();
   $('btn-admin').classList.toggle('hidden', !['admin', 'super_admin'].includes(state.profile.role));
   renderList();
+  renderMonitorStrip();
   if (await resumePendingPick()) return; // finish an in-progress monitor pick
   showScreen('main');
   autoCaptureMonitors(); // fire-and-forget refresh for the current site
@@ -485,6 +486,14 @@ function renderList() {
       vb.className = 'badge gray';
       vb.textContent = m.vaults.name;
       sub.appendChild(vb);
+    }
+    const mon = monitorForEntry(entry);
+    if (mon && mon.last_numeric !== null && mon.last_numeric !== undefined) {
+      const cb = document.createElement('span');
+      cb.className = 'badge' + (monitorIsLow(mon) ? ' low' : ' gray');
+      cb.textContent = formatMonitorValue(mon);
+      cb.title = `${mon.name} - checked ${timeAgo(mon.last_checked_at)}`;
+      sub.appendChild(cb);
     }
     info.append(title, sub);
 
@@ -1122,7 +1131,52 @@ function timeAgo(iso) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+// Compact credits strip shown at the top of the main vault screen.
+function renderMonitorStrip() {
+  const strip = $('monitor-strip');
+  strip.innerHTML = '';
+  strip.classList.toggle('hidden', state.monitors.length === 0);
+  for (const mon of state.monitors) {
+    const chip = document.createElement('button');
+    chip.className = 'mon-chip' + (monitorIsLow(mon) ? ' low' : '');
+    chip.title = `${mon.name} - checked ${timeAgo(mon.last_checked_at)}. Click to manage monitors.`;
+    const name = document.createElement('span');
+    name.textContent = mon.name;
+    const val = document.createElement('span');
+    val.className = 'val';
+    val.textContent =
+      mon.last_numeric === null || mon.last_numeric === undefined
+        ? '—'
+        : formatMonitorValue(mon);
+    chip.append(name, val);
+    chip.addEventListener('click', () => {
+      renderMonitors();
+      showScreen('monitors');
+    });
+    strip.appendChild(chip);
+  }
+}
+
+// Monitor whose host matches an entry's site, if any.
+function monitorForEntry(entry) {
+  if (!entry.data.url) return null;
+  let host;
+  try {
+    const raw = entry.data.url.includes('://') ? entry.data.url : `https://${entry.data.url}`;
+    host = new URL(raw).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+  return (
+    state.monitors.find((m) => {
+      const mh = monitorHost(m.url);
+      return mh && (mh === host || mh.endsWith(`.${host}`) || host.endsWith(`.${mh}`));
+    }) || null
+  );
+}
+
 function renderMonitors() {
+  renderMonitorStrip();
   const list = $('monitor-list');
   list.innerHTML = '';
   $('monitors-empty').classList.toggle('hidden', state.monitors.length > 0);
@@ -1311,6 +1365,8 @@ async function autoCaptureMonitors() {
     }
     if (await captureMonitor(mon, { silent: true })) {
       toast(`${mon.name}: ${formatMonitorValue(mon)}${monitorIsLow(mon) ? ' - LOW' : ''}`);
+      renderMonitorStrip();
+      renderList();
     }
   }
 }

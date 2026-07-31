@@ -517,6 +517,46 @@ textarea {
   width: 96px;
 }
 
+/* Credits strip on the main screen */
+.monitor-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.mon-chip:hover {
+  background: var(--surface-2);
+}
+
+.mon-chip .val {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mon-chip.low {
+  border-color: var(--danger);
+  background: var(--danger-tint);
+}
+
+.mon-chip.low .val {
+  color: var(--danger);
+}
+
 /* Live one-time-password preview in the editor */
 .totp-preview {
   display: flex;
