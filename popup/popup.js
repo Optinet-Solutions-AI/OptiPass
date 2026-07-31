@@ -1240,10 +1240,15 @@ async function fetchApiValue(cfg, { interactive = false } = {}) {
     throw new Error(`API did not return JSON: ${text.slice(0, 140)}`);
   }
   const v = pluck(json, (cfg.jsonPath || '').trim());
-  const numeric = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/,/g, ''));
-  if (v === undefined || Number.isNaN(numeric)) {
+  if (v === undefined || v === null) {
     throw new Error(
       `Field "${cfg.jsonPath}" not found. Response starts: ${JSON.stringify(json).slice(0, 180)}`
+    );
+  }
+  const numeric = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, ''));
+  if (Number.isNaN(numeric)) {
+    throw new Error(
+      `Field "${cfg.jsonPath}" contains "${String(v).slice(0, 60)}" - that's not a number, so it can't be monitored. (Handy for discovering ids, though.)`
     );
   }
   return { value: v, numeric };
