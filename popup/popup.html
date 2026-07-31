@@ -81,10 +81,30 @@
       <h1>Vault locked</h1>
       <p class="muted">Signed in as <span id="unlock-email"></span></p>
     </div>
-    <input type="password" id="unlock-pw" autocomplete="off" placeholder="Master password" />
+    <div id="unlock-pin-wrap" class="hidden">
+      <input type="password" id="unlock-pin" class="pin-input" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Enter PIN" />
+      <button id="btn-unlock-use-master" class="btn link full">Use master password instead</button>
+    </div>
+    <div id="unlock-master-wrap">
+      <input type="password" id="unlock-pw" autocomplete="off" placeholder="Master password" />
+      <button id="unlock-btn" class="btn primary full">Unlock</button>
+    </div>
     <div id="unlock-error" class="error hidden"></div>
-    <button id="unlock-btn" class="btn primary full">Unlock</button>
     <button id="btn-unlock-signout" class="btn link full">Sign out</button>
+  </div>
+
+  <!-- Offer a quick-unlock PIN after a master-password unlock -->
+  <div id="screen-pin-setup" class="screen hidden">
+    <div class="brand">
+      <div class="brand-logo">O</div>
+      <h1>Quick unlock PIN</h1>
+      <p class="muted">Set a 6-digit PIN to unlock OptiPass on <strong>this browser</strong> without typing your master password every time. New devices still require the master password.</p>
+    </div>
+    <input type="password" id="ps-pin" class="pin-input" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="6-digit PIN" />
+    <input type="password" id="ps-pin2" class="pin-input" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Repeat PIN" />
+    <div id="ps-error" class="error hidden"></div>
+    <button id="btn-ps-save" class="btn primary full">Enable PIN unlock</button>
+    <button id="btn-ps-skip" class="btn link full">Not now</button>
   </div>
 
   <!-- Main vault list -->
@@ -182,6 +202,20 @@
         <label class="inline grow" for="set-autolock">Lock after (minutes, 0 = never)</label>
         <input type="number" id="set-autolock" min="0" max="240" />
         <button id="btn-autolock-save" class="btn">Save</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Quick unlock PIN</h3>
+      <p class="muted" id="sp-status"></p>
+      <div class="row">
+        <input type="password" id="sp-pin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="New 6-digit PIN" />
+        <input type="password" id="sp-pin2" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Repeat" />
+      </div>
+      <div id="sp-msg" class="error hidden"></div>
+      <div class="row">
+        <button id="btn-pin-save" class="btn grow">Save PIN</button>
+        <button id="btn-pin-remove" class="btn danger hidden">Remove PIN</button>
       </div>
     </section>
 

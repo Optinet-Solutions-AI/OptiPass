@@ -54,12 +54,25 @@ const state = {
 
 // ---------- screens / feedback ----------
 
-const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'main', 'edit', 'settings', 'admin', 'monitors', 'monitor-edit'];
+const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'settings', 'admin', 'monitors', 'monitor-edit'];
 
 function showScreen(name) {
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
-  const focus = { login: 'login-email', unlock: 'unlock-pw', 'master-setup': 'ms-pw', main: 'search' }[name];
+  const focus = { login: 'login-email', 'master-setup': 'ms-pw', 'pin-setup': 'ps-pin', main: 'search' }[name];
   if (focus) setTimeout(() => $(focus).focus(), 50);
+}
+
+// The unlock screen has two modes: quick PIN (if one is set on this
+// browser) with a master-password fallback, or master password only.
+async function showUnlockScreen(forceMaster = false) {
+  $('unlock-email').textContent = state.profile?.email || '';
+  const usePin = !forceMaster && (await keychain.hasPin());
+  $('unlock-pin-wrap').classList.toggle('hidden', !usePin);
+  $('unlock-master-wrap').classList.toggle('hidden', usePin);
+  $('unlock-pin').value = '';
+  hideError('unlock-error');
+  showScreen('unlock');
+  setTimeout(() => $(usePin ? 'unlock-pin' : 'unlock-pw').focus(), 50);
 }
 
 let toastTimer = null;
@@ -143,10 +156,7 @@ async function boot() {
   if (!keyRecord || !profile.public_key) return showScreen('master-setup');
 
   const unlocked = await keychain.getUnlocked();
-  if (!unlocked) {
-    $('unlock-email').textContent = profile.email;
-    return showScreen('unlock');
-  }
+  if (!unlocked) return showUnlockScreen();
 
   await enterMain();
 }
@@ -225,6 +235,7 @@ $('btn-signout').addEventListener('click', doSignOut);
 
 async function doSignOut() {
   await keychain.lock();
+  await keychain.clearPin();
   await api.signOut();
   state.uid = null;
   state.profile = null;
@@ -288,6 +299,14 @@ async function doUnlock() {
     const privateJwk = await keychain.decryptPrivateKey(pw, state.keyRecord);
     await keychain.setUnlocked(privateJwk);
     $('unlock-pw').value = '';
+    // Offer a quick-unlock PIN once per browser.
+    if (!(await keychain.hasPin()) && !state.settings.pinOffered) {
+      $('ps-pin').value = '';
+      $('ps-pin2').value = '';
+      hideError('ps-error');
+      showScreen('pin-setup');
+      return;
+    }
     await enterMain();
   } catch {
     showError('unlock-error', 'Incorrect master password.');
@@ -300,6 +319,79 @@ async function doUnlock() {
 $('unlock-btn').addEventListener('click', doUnlock);
 $('unlock-pw').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') doUnlock();
+});
+
+// ---------- quick-unlock PIN ----------
+
+const PIN_RE = /^\d{6}$/;
+
+function digitsOnly(el) {
+  el.addEventListener('input', () => {
+    el.value = el.value.replace(/\D/g, '').slice(0, 6);
+  });
+}
+for (const id of ['unlock-pin', 'ps-pin', 'ps-pin2', 'sp-pin', 'sp-pin2']) digitsOnly($(id));
+
+let pinUnlockBusy = false;
+$('unlock-pin').addEventListener('input', async () => {
+  const pin = $('unlock-pin').value;
+  if (!PIN_RE.test(pin) || pinUnlockBusy) return;
+  pinUnlockBusy = true;
+  $('unlock-pin').disabled = true;
+  hideError('unlock-error');
+  try {
+    await keychain.unlockWithPin(pin);
+    await enterMain();
+  } catch (err) {
+    $('unlock-pin').value = '';
+    if (err.code === 'PIN_WIPED') {
+      await showUnlockScreen(true);
+      showError('unlock-error', 'Too many wrong attempts - the PIN was removed. Unlock with your master password.');
+    } else {
+      showError('unlock-error', `Wrong PIN - ${err.attemptsLeft} attempt${err.attemptsLeft === 1 ? '' : 's'} left.`);
+    }
+  } finally {
+    pinUnlockBusy = false;
+    $('unlock-pin').disabled = false;
+    if (!$('unlock-pin-wrap').classList.contains('hidden')) $('unlock-pin').focus();
+  }
+});
+
+$('btn-unlock-use-master').addEventListener('click', () => showUnlockScreen(true));
+
+async function savePinAndContinue(pinId, pin2Id, errorId) {
+  const pin = $(pinId).value;
+  if (!PIN_RE.test(pin)) {
+    showError(errorId, 'The PIN must be exactly 6 digits.');
+    return false;
+  }
+  if (pin !== $(pin2Id).value) {
+    showError(errorId, 'PINs do not match.');
+    return false;
+  }
+  await keychain.setupPinFromSession(pin);
+  $(pinId).value = '';
+  $(pin2Id).value = '';
+  return true;
+}
+
+$('btn-ps-save').addEventListener('click', async () => {
+  hideError('ps-error');
+  try {
+    if (!(await savePinAndContinue('ps-pin', 'ps-pin2', 'ps-error'))) return;
+    state.settings.pinOffered = true;
+    await keychain.saveSettings(state.settings);
+    toast('PIN unlock enabled for this browser');
+    await enterMain();
+  } catch (err) {
+    showError('ps-error', err.message);
+  }
+});
+
+$('btn-ps-skip').addEventListener('click', async () => {
+  state.settings.pinOffered = true;
+  await keychain.saveSettings(state.settings);
+  await enterMain();
 });
 
 // ---------- vault + item loading ----------
@@ -408,10 +500,7 @@ async function enterMain() {
     // Non-fatal; retried next open.
   }
   const ok = await ensureVaultKeys();
-  if (!ok) {
-    $('unlock-email').textContent = state.profile.email;
-    return showScreen('unlock');
-  }
+  if (!ok) return showUnlockScreen();
   await fetchItems();
   try {
     await fetchMonitors();
@@ -549,8 +638,7 @@ $('btn-lock').addEventListener('click', async () => {
   await keychain.lock();
   state.vaultKeys = new Map();
   state.items = [];
-  $('unlock-email').textContent = state.profile.email;
-  showScreen('unlock');
+  showUnlockScreen();
 });
 
 $('btn-add').addEventListener('click', () => openEdit(null));
@@ -792,14 +880,39 @@ $('btn-delete').addEventListener('click', async (e) => {
 
 // ---------- settings ----------
 
-function loadSettingsScreen() {
+async function loadSettingsScreen() {
   $('set-email').textContent = `Signed in as ${state.profile.email} (${state.profile.role.replace('_', ' ')})`;
   $('set-name').value = state.profile.display_name || '';
   $('set-theme').value = state.settings.theme || 'light';
   $('set-autolock').value = state.settings.autoLockMinutes;
-  for (const id of ['cmp-old', 'cmp-new', 'cmp-new2']) $(id).value = '';
+  for (const id of ['cmp-old', 'cmp-new', 'cmp-new2', 'sp-pin', 'sp-pin2']) $(id).value = '';
   hideError('cmp-msg');
+  hideError('sp-msg');
+  const pinOn = await keychain.hasPin();
+  $('sp-status').textContent = pinOn
+    ? 'PIN unlock is ON for this browser. Wrong PIN 5 times removes it.'
+    : 'No PIN on this browser - unlocking asks for the master password.';
+  $('btn-pin-remove').classList.toggle('hidden', !pinOn);
 }
+
+$('btn-pin-save').addEventListener('click', async () => {
+  hideError('sp-msg');
+  try {
+    if (!(await savePinAndContinue('sp-pin', 'sp-pin2', 'sp-msg'))) return;
+    state.settings.pinOffered = true;
+    await keychain.saveSettings(state.settings);
+    await loadSettingsScreen();
+    toast('PIN saved');
+  } catch (err) {
+    showError('sp-msg', err.message);
+  }
+});
+
+$('btn-pin-remove').addEventListener('click', async () => {
+  await keychain.clearPin();
+  await loadSettingsScreen();
+  toast('PIN removed - master password required to unlock');
+});
 
 $('btn-settings-back').addEventListener('click', () => showScreen('main'));
 
