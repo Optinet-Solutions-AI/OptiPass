@@ -45,6 +45,7 @@ create table public.user_keys (
 create table public.invites (
   email text primary key,
   role text not null default 'member' check (role in ('admin', 'member')),
+  code text not null unique default encode(gen_random_bytes(8), 'hex'),
   invited_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -128,11 +129,21 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as
 $$
 declare
-  inv record;
+  inv invites%rowtype;
+  has_inv boolean := false;
   first_user boolean;
 begin
   select count(*) = 0 into first_user from profiles;
-  select * into inv from invites where lower(email) = lower(new.email);
+
+  -- invite code (from signup metadata) wins; fall back to email match
+  if coalesce(new.raw_user_meta_data->>'invite_code', '') <> '' then
+    select * into inv from invites where code = new.raw_user_meta_data->>'invite_code';
+    has_inv := found;
+  end if;
+  if not has_inv then
+    select * into inv from invites where lower(email) = lower(new.email);
+    has_inv := found;
+  end if;
 
   insert into profiles (id, email, display_name, role, status)
   values (
@@ -140,13 +151,15 @@ begin
     new.email,
     split_part(new.email, '@', 1),
     case when first_user then 'super_admin'
-         when inv.email is not null then inv.role
+         when has_inv then inv.role
          else 'member' end,
-    case when first_user or inv.email is not null then 'active'
+    case when first_user or has_inv then 'active'
          else 'pending' end
   );
 
-  delete from invites where lower(email) = lower(new.email);
+  if has_inv then
+    delete from invites where email = inv.email;
+  end if;
   return new;
 end;
 $$;

@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "OptiPass",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Optinet Solutions team password manager - end-to-end encrypted vaults, autofill, and 2FA codes.",
   "permissions": ["storage", "alarms", "activeTab", "scripting", "clipboardWrite"],
   "optional_host_permissions": ["https://*/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "popup/popup.html",

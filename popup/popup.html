@@ -39,6 +39,8 @@
     <div id="login-pw2-wrap" class="hidden">
       <label for="login-pw2">Confirm account password</label>
       <input type="password" id="login-pw2" autocomplete="new-password" />
+      <label for="login-invite">Invite code (if you received one)</label>
+      <input type="text" id="login-invite" autocomplete="off" placeholder="e.g. 4f9a1c2b7d3e5a08" />
     </div>
     <div id="login-error" class="error hidden"></div>
     <button id="btn-login-submit" class="btn primary full">Sign in</button>
@@ -159,6 +161,11 @@
       <span id="totp-left" class="muted"></span>
     </div>
     <div class="monitor-head">
+      <label>API keys &amp; secrets</label>
+      <button id="btn-secret-add" class="btn small" type="button">+ Add secret</button>
+    </div>
+    <div id="secret-list" class="stack"></div>
+    <div class="monitor-head">
       <label>Credit &amp; usage monitors</label>
       <button id="btn-metric-add" class="btn small" type="button">+ Add metric</button>
     </div>
@@ -231,10 +238,76 @@
       <button id="btn-change-pw" class="btn full">Change password</button>
     </section>
 
+    <section>
+      <h3>Updates</h3>
+      <p class="muted" id="upd-status"></p>
+      <label class="checkbox"><input type="checkbox" id="set-autoupdate" /> Update automatically (recommended)</label>
+      <div class="row">
+        <button id="btn-check-updates" class="btn grow">Check for updates</button>
+        <button id="btn-reload-ext" class="btn grow hidden">Reload now</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Alerts</h3>
+      <label class="checkbox"><input type="checkbox" id="set-alerts" /> Red badge on the OptiPass icon when a metric is LOW</label>
+    </section>
+
+    <section>
+      <h3>Help</h3>
+      <div class="row">
+        <button id="btn-help" class="btn grow">Open help</button>
+        <button id="btn-tour" class="btn grow">Take the tour</button>
+      </div>
+    </section>
+
     <section class="danger-zone">
       <h3>Session</h3>
       <button id="btn-signout" class="btn danger full">Sign out</button>
     </section>
+  </div>
+
+  <!-- Help -->
+  <div id="screen-help" class="screen hidden">
+    <header class="topbar">
+      <button id="btn-help-back" class="btn icon" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+      <h2>Help</h2>
+    </header>
+
+    <section>
+      <h3>Getting started</h3>
+      <p class="muted">You have two passwords: the <strong>account password</strong> signs you in, the <strong>master password</strong> decrypts your data. The master password never leaves your device and <strong>can never be recovered</strong> - keep it written somewhere safe. Day to day you'll unlock with your 6-digit PIN instead.</p>
+    </section>
+
+    <section>
+      <h3>Filling logins</h3>
+      <p class="muted">Open a site's login page, click OptiPass, and press the ⬇ button on the matching entry - username and password fill in, and if the entry has a 2FA key its current code is copied so you can paste it when asked.</p>
+    </section>
+
+    <section>
+      <h3>2FA one-time passwords</h3>
+      <p class="muted">When a site offers authenticator-app 2FA, choose "enter code manually" and paste the setup key into the entry's 2FA field. OptiPass then generates the rotating 6-digit code - same as Google Authenticator, shared with your vault's members. Keep recovery codes in the Notes.</p>
+    </section>
+
+    <section>
+      <h3>Vaults are your teams</h3>
+      <p class="muted"><strong>Personal</strong> is cryptographically private - not even admins can read it. Shared vaults (e.g. AI Team, RoosterPartner) are visible only to the members an admin adds; passwords never cross between teams.</p>
+    </section>
+
+    <section>
+      <h3>Credit &amp; usage monitors</h3>
+      <p class="muted">Edit an entry and add metrics (Credits, Bandwidth...) read from the tool's dashboard page or its API. Readings show in a box under the entry, turn red below your threshold, and a red badge appears on the OptiPass icon. API keys for monitors are stored end-to-end encrypted.</p>
+    </section>
+
+    <section>
+      <h3>FAQ</h3>
+      <p class="muted"><strong>Forgot your master password?</strong> It cannot be recovered. An admin resets your keys (SETUP.md explains how); your personal vault is lost but shared vaults come back when a manager re-adds you.</p>
+      <p class="muted"><strong>Forgot your PIN?</strong> Click "Use master password instead" - after 5 wrong PIN tries it resets automatically.</p>
+      <p class="muted"><strong>New teammate?</strong> Admin screen &gt; Invite - send them the invite code; they install OptiPass, sign up with the code, and set their own passwords.</p>
+      <p class="muted"><strong>Updating?</strong> Updates apply automatically. To force one: Settings &gt; Check for updates.</p>
+    </section>
+
+    <button id="btn-help-tour" class="btn primary full">Take the interactive tour</button>
   </div>
 
   <!-- Admin -->

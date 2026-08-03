@@ -12,6 +12,7 @@ import {
 } from '../lib/crypto.js';
 import * as api from '../lib/api.js';
 import * as keychain from '../lib/keychain.js';
+import { getVersions, newer } from '../lib/updates.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -51,11 +52,12 @@ const state = {
   adminProfiles: [],
   monitors: [],
   editMetrics: [], // metric sub-forms while the entry editor is open
+  editSecrets: [], // extra API-key secrets while the entry editor is open
 };
 
 // ---------- screens / feedback ----------
 
-const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'settings', 'admin'];
+const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'settings', 'admin', 'help'];
 
 function showScreen(name) {
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
@@ -119,6 +121,7 @@ async function setTheme(theme, syncProfile) {
 async function boot() {
   state.settings = await keychain.getSettings();
   applyTheme(state.settings.theme || 'light');
+  maybeAutoReload(); // apply new files after a git pull, silently
   state.activeHost = await getActiveHost();
 
   if (!api.isConfigured()) return showScreen('config');
@@ -205,7 +208,7 @@ async function submitLogin() {
     if (state.loginMode === 'signup') {
       if (pw.length < 8) return showError('login-error', 'Account password must be at least 8 characters.');
       if (pw !== $('login-pw2').value) return showError('login-error', 'Passwords do not match.');
-      const { signedIn } = await api.signUp(email, pw);
+      const { signedIn } = await api.signUp(email, pw, $('login-invite').value.trim() || undefined);
       if (!signedIn) {
         setLoginMode('signin');
         return showError('login-error', 'Account created - confirm the email we sent you, then sign in.', true);
@@ -519,6 +522,11 @@ async function enterMain() {
   if (await resumePendingPick()) return; // finish an in-progress monitor pick
   showScreen('main');
   autoCaptureMonitors(); // fire-and-forget refresh for the current site
+  if (!state.settings.tourDone) {
+    state.settings.tourDone = true;
+    keychain.saveSettings(state.settings);
+    startTour();
+  }
 }
 
 // ---------- main list ----------
@@ -609,6 +617,7 @@ function renderList() {
 
     list.appendChild(li);
   }
+  updateLowBadge();
 }
 
 function actionBtn(iconName, titleText, onClick) {
@@ -755,6 +764,10 @@ async function openEdit(id, resume = null) {
   $('f-totp').value = d?.totp ?? entry?.data.totp ?? '';
   $('f-notes').value = d?.notes ?? entry?.data.notes ?? '';
   updateTotpPreview();
+
+  // ----- extra API-key secrets -----
+  state.editSecrets = (d?.secrets ?? entry?.data.secrets ?? []).map((s) => ({ ...s }));
+  renderSecretList();
 
   // ----- credit / usage metrics -----
   state.editMetrics = [];
@@ -926,6 +939,9 @@ $('btn-save').addEventListener('click', async () => {
     username: $('f-username').value.trim(),
     password: $('f-password').value,
     totp,
+    secrets: state.editSecrets
+      .map((s) => ({ label: (s.label || '').trim(), value: s.value || '' }))
+      .filter((s) => s.label || s.value),
     notes: $('f-notes').value.trim(),
     createdAt: existing?.data.createdAt || now,
     updatedAt: now,
@@ -1035,7 +1051,47 @@ async function loadSettingsScreen() {
     ? 'PIN unlock is ON for this browser. Wrong PIN 5 times removes it.'
     : 'No PIN on this browser - unlocking asks for the master password.';
   $('btn-pin-remove').classList.toggle('hidden', !pinOn);
+  $('set-autoupdate').checked = state.settings.autoUpdate !== false;
+  $('set-alerts').checked = state.settings.alertsBadge !== false;
+  $('upd-status').textContent = `Running v${chrome.runtime.getManifest().version}`;
+  $('btn-reload-ext').classList.add('hidden');
 }
+
+$('set-autoupdate').addEventListener('change', async (e) => {
+  state.settings.autoUpdate = e.target.checked;
+  await keychain.saveSettings(state.settings);
+});
+
+$('set-alerts').addEventListener('change', async (e) => {
+  state.settings.alertsBadge = e.target.checked;
+  await keychain.saveSettings(state.settings);
+  updateLowBadge();
+});
+
+$('btn-check-updates').addEventListener('click', async () => {
+  $('upd-status').textContent = 'Checking...';
+  const { running, disk, remote } = await getVersions();
+  if (disk && disk !== running) {
+    $('btn-reload-ext').classList.remove('hidden');
+    $('upd-status').textContent = `v${disk} is ready in the folder - click Reload now to apply.`;
+  } else if (remote && newer(remote, running)) {
+    $('upd-status').textContent = `v${remote} is available. Run "git pull" in the OptiPass folder (or re-download it) and it applies automatically.`;
+  } else {
+    $('upd-status').textContent = `Up to date - v${running}.`;
+  }
+});
+
+$('btn-reload-ext').addEventListener('click', () => chrome.runtime.reload());
+$('btn-help').addEventListener('click', () => showScreen('help'));
+$('btn-help-back').addEventListener('click', () => showScreen('settings'));
+$('btn-tour').addEventListener('click', () => {
+  showScreen('main');
+  startTour();
+});
+$('btn-help-tour').addEventListener('click', () => {
+  showScreen('main');
+  startTour();
+});
 
 $('btn-pin-save').addEventListener('click', async () => {
   hideError('sp-msg');
@@ -1174,7 +1230,7 @@ function adminActionBtn(label, targetId, newRole, newStatus) {
 }
 
 async function loadAdminInvites() {
-  const invites = await api.rest('/invites?select=email,role&order=email');
+  const invites = await api.rest('/invites?select=*&order=email');
   const box = $('invite-list');
   box.innerHTML = '';
   for (const inv of invites) {
@@ -1183,6 +1239,17 @@ async function loadAdminInvites() {
     const who = document.createElement('div');
     who.className = 'who';
     who.textContent = `${inv.email} (${inv.role})`;
+    row.appendChild(who);
+    if (inv.code) {
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn small';
+      copyBtn.textContent = 'Copy code';
+      copyBtn.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(inv.code);
+        toast('Invite code copied - send it to your teammate');
+      });
+      row.appendChild(copyBtn);
+    }
     const b = document.createElement('button');
     b.className = 'btn small';
     b.textContent = 'Remove';
@@ -1191,7 +1258,7 @@ async function loadAdminInvites() {
       api.logEvent('invite.delete', { email: inv.email });
       loadAdminInvites();
     });
-    row.append(who, b);
+    row.appendChild(b);
     box.appendChild(row);
   }
 }
@@ -1200,11 +1267,20 @@ $('btn-invite').addEventListener('click', async () => {
   const email = $('inv-email').value.trim().toLowerCase();
   if (!email || !email.includes('@')) return toast('Enter a valid email');
   try {
-    await api.rest('/invites', { method: 'POST', body: { email, role: $('inv-role').value } });
+    const [inv] = await api.rest('/invites?select=*', {
+      method: 'POST',
+      body: { email, role: $('inv-role').value },
+      prefer: 'return=representation',
+    });
     api.logEvent('invite.create', { email });
     $('inv-email').value = '';
     await loadAdminInvites();
-    toast(`Invited ${email}`);
+    if (inv?.code) {
+      await navigator.clipboard.writeText(inv.code);
+      toast(`Invited ${email} - invite code copied to clipboard`);
+    } else {
+      toast(`Invited ${email}`);
+    }
   } catch (err) {
     toast(err.message);
   }
@@ -1375,6 +1451,29 @@ function monitorIsLow(mon) {
     mon.last_numeric !== undefined &&
     Number(mon.last_numeric) < Number(mon.threshold)
   );
+}
+
+// Red count badge on the toolbar icon when any metric is LOW.
+function updateLowBadge() {
+  if (state.settings.alertsBadge === false) {
+    chrome.action.setBadgeText({ text: '' });
+    return;
+  }
+  const low = state.monitors.filter(monitorIsLow).length;
+  chrome.action.setBadgeBackgroundColor({ color: '#b4544a' });
+  chrome.action.setBadgeText({ text: low > 0 ? String(low) : '' });
+}
+
+// After a git pull the folder holds a newer manifest than the running
+// code - reload to apply it (the "no reinstall, no refresh" update).
+async function maybeAutoReload() {
+  if (state.settings.autoUpdate === false) return;
+  try {
+    const disk = (await (await fetch(chrome.runtime.getURL('manifest.json'))).json()).version;
+    if (disk && disk !== chrome.runtime.getManifest().version) chrome.runtime.reload();
+  } catch {
+    /* ignore */
+  }
 }
 
 function timeAgo(iso) {
@@ -1780,6 +1879,36 @@ $('btn-metric-add').addEventListener('click', () => {
   renderMetricList();
 });
 
+// ---------- extra API-key secrets (entry editor) ----------
+
+function renderSecretList() {
+  const list = $('secret-list');
+  list.innerHTML = '';
+  state.editSecrets.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.margin = '0';
+    const label = boundInput('text', s, 'label', 'Label, e.g. Private API key');
+    label.classList.add('grow');
+    const value = boundInput('password', s, 'value', 'Secret value');
+    value.classList.add('grow');
+    const copy = actionBtn('key', 'Copy secret', () =>
+      copyText(s.value, `${(s.label || 'Secret').trim() || 'Secret'} copied`)
+    );
+    const remove = actionBtn('trash', 'Remove secret', () => {
+      state.editSecrets.splice(i, 1);
+      renderSecretList();
+    });
+    row.append(label, value, copy, remove);
+    list.appendChild(row);
+  });
+}
+
+$('btn-secret-add').addEventListener('click', () => {
+  state.editSecrets.push({ label: '', value: '' });
+  renderSecretList();
+});
+
 // Element picker injected into the page. The popup closes when the user
 // clicks the page, so the result goes to the background worker and is
 // collected next time the popup opens (resumePendingPick).
@@ -1897,6 +2026,7 @@ async function launchPicker(pickIndex) {
       password: $('f-password').value,
       totp: $('f-totp').value,
       notes: $('f-notes').value,
+      secrets: state.editSecrets,
       metrics: state.editMetrics,
       pickIndex,
     },
@@ -1908,6 +2038,102 @@ async function launchPicker(pickIndex) {
   } catch {
     showError('edit-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
   }
+}
+
+// ---------- interactive tour ----------
+
+const TOUR_STEPS = [
+  { el: 'search', title: 'Search', text: 'Find any login by name, username, or website.' },
+  { el: 'btn-add', title: 'Add entries', text: 'Save logins - with 2FA codes, API keys, and credit monitors attached to them.' },
+  { el: 'vault-filter', title: 'Vaults are your teams', text: 'Personal is only yours - not even admins can read it. Shared vaults (like AI Team) are visible only to their members.' },
+  { el: 'entry-list', title: 'Your vault', text: 'Fill a login on the current site (⬇), or copy the username, password, or 2FA code. Credit readings appear in a box under their tool and turn red when LOW.' },
+  { el: 'btn-theme', title: 'Theme', text: 'Light or dark - your choice follows you to every device.' },
+  { el: 'btn-lock', title: 'Lock', text: 'Locks the vault. Unlock with your 6-digit PIN or master password.' },
+  { el: 'btn-settings', title: 'Settings & help', text: 'PIN, auto-lock, updates, alerts, help, and this tour live here.' },
+];
+
+let tourStep = 0;
+let tourEls = null;
+
+function startTour() {
+  endTour();
+  tourStep = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'tour-overlay';
+  const spot = document.createElement('div');
+  spot.className = 'tour-spot';
+  const card = document.createElement('div');
+  card.className = 'tour-card';
+  overlay.append(spot, card);
+  document.body.appendChild(overlay);
+  tourEls = { overlay, spot, card };
+  renderTourStep();
+}
+
+function endTour() {
+  if (tourEls) tourEls.overlay.remove();
+  tourEls = null;
+}
+
+function renderTourStep() {
+  if (!tourEls) return;
+  const step = TOUR_STEPS[tourStep];
+  const target = $(step.el);
+  let r = target ? target.getBoundingClientRect() : null;
+  if (!r || (!r.width && !r.height)) {
+    r = { left: 20, top: 90, width: window.innerWidth - 40, height: 60 };
+  }
+  const pad = 4;
+  Object.assign(tourEls.spot.style, {
+    left: `${r.left - pad}px`,
+    top: `${r.top - pad}px`,
+    width: `${r.width + pad * 2}px`,
+    height: `${r.height + pad * 2}px`,
+  });
+
+  const card = tourEls.card;
+  card.innerHTML = '';
+  const h = document.createElement('div');
+  h.className = 'tour-title';
+  h.textContent = step.title;
+  const p = document.createElement('p');
+  p.className = 'muted';
+  p.textContent = step.text;
+  const nav = document.createElement('div');
+  nav.className = 'row';
+  const count = document.createElement('span');
+  count.className = 'muted';
+  count.style.flex = '1';
+  count.textContent = `${tourStep + 1} / ${TOUR_STEPS.length}`;
+  const skip = document.createElement('button');
+  skip.className = 'btn link';
+  skip.textContent = 'Skip';
+  skip.addEventListener('click', endTour);
+  const back = document.createElement('button');
+  back.className = 'btn small';
+  back.textContent = 'Back';
+  back.disabled = tourStep === 0;
+  back.addEventListener('click', () => {
+    tourStep--;
+    renderTourStep();
+  });
+  const next = document.createElement('button');
+  next.className = 'btn small primary';
+  next.textContent = tourStep === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+  next.addEventListener('click', () => {
+    if (tourStep === TOUR_STEPS.length - 1) return endTour();
+    tourStep++;
+    renderTourStep();
+  });
+  nav.append(count, skip, back, next);
+  card.append(h, p, nav);
+
+  requestAnimationFrame(() => {
+    const cardH = card.offsetHeight;
+    const below = r.top + r.height + 12;
+    const top = below + cardH + 10 < window.innerHeight ? below : Math.max(10, r.top - cardH - 12);
+    card.style.top = `${top}px`;
+  });
 }
 
 // ---------- go ----------

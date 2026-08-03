@@ -742,6 +742,42 @@ section input[type="password"] {
   transition: width 0.2s, background 0.2s;
 }
 
+/* Onboarding tour */
+#tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.tour-spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(20, 19, 17, 0.55);
+  transition: all 0.25s ease;
+  pointer-events: none;
+}
+
+.tour-card {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  z-index: 51;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px var(--shadow);
+}
+
+.tour-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.tour-card .row {
+  margin-bottom: 0;
+}
+
 .toast {
   position: fixed;
   bottom: 16px;
