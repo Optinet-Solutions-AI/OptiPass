@@ -5,7 +5,10 @@ backup-v1-local/
 Thumbs.db
 Desktop.ini
 .DS_Store
-package-lock.json
+/package-lock.json
 
 # secrets (PMS API token lives here)
 .env.local
+web/node_modules/
+web/.next/
+web/out/

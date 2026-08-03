@@ -1,0 +1,619 @@
+/* OptiPass web - same minimalist design system as the extension.
+   Light default; dark applied per user via <html data-theme="dark">. */
+
+:root {
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface-2: #f1efeb;
+  --hairline: #e8e5df;
+  --text: #23221f;
+  --muted: #8c8983;
+  --ink: #23221f;
+  --ink-contrast: #ffffff;
+  --accent: #5551d8;
+  --accent-tint: #ecebfb;
+  --danger: #b4544a;
+  --danger-tint: rgba(180, 84, 74, 0.1);
+  --ok-tint: rgba(107, 143, 113, 0.14);
+  --ok-text: #4c7156;
+  --shadow: rgba(35, 34, 31, 0.06);
+}
+
+:root[data-theme='dark'] {
+  --bg: #191817;
+  --surface: #211f1e;
+  --surface-2: #2a2826;
+  --hairline: #343230;
+  --text: #edebe7;
+  --muted: #9b9891;
+  --ink: #edebe7;
+  --ink-contrast: #1b1a18;
+  --accent: #a9a5f0;
+  --accent-tint: rgba(169, 165, 240, 0.16);
+  --danger: #d98b7f;
+  --danger-tint: rgba(217, 139, 127, 0.14);
+  --ok-tint: rgba(148, 181, 155, 0.16);
+  --ok-text: #a9c7b1;
+  --shadow: rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.screen {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* brand */
+.brand {
+  text-align: center;
+  margin: 24px 0 26px;
+}
+
+.brand-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--ink-contrast);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 56px;
+}
+
+.brand h1 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+
+.brand .muted {
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.notice {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* forms */
+label {
+  display: block;
+  margin: 16px 0 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+label.inline,
+label.checkbox {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+input[type='text'],
+input[type='password'],
+input[type='search'],
+input[type='email'],
+input[type='number'],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+}
+
+input[type='number'] {
+  width: 96px;
+}
+
+select {
+  cursor: pointer;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+textarea {
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.row input[type='text'],
+.row input[type='password'],
+.row input[type='email'] {
+  flex: 1;
+  min-width: 140px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.btn:hover {
+  background: var(--surface-2);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ink-contrast);
+}
+
+.btn.primary:hover {
+  opacity: 0.88;
+}
+
+.btn.danger {
+  border-color: transparent;
+  color: var(--danger);
+}
+
+.btn.danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn.link {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.btn.link:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+.btn.icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.btn.icon:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn.full {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.btn.grow {
+  flex: 1;
+}
+
+.btn.small {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+/* top bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.topbar h2 {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.topbar input[type='search'],
+.topbar select {
+  flex: 1;
+}
+
+/* entry list */
+.entry-list {
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 4px;
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.entry {
+  border-radius: 10px;
+}
+
+.entry + .entry {
+  border-top: 1px solid var(--hairline);
+}
+
+.entry-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 10px;
+}
+
+.entry-row:hover {
+  background: var(--surface-2);
+}
+
+.entry-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
+.entry-row:hover .entry-avatar {
+  background: var(--surface);
+}
+
+.entry-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-title {
+  font-weight: 600;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-sub {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.entry-actions .btn.icon {
+  width: 30px;
+  height: 30px;
+}
+
+.entry-actions .btn.icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.badge.gray {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.empty {
+  text-align: center;
+  padding: 56px 0;
+}
+
+/* credit box */
+.credit-box {
+  margin: 0 10px 10px 60px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+}
+
+.credit-metric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.credit-metric + .credit-metric {
+  border-top: 1px solid var(--hairline);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.credit-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.credit-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.credit-value {
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.credit-meta {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.credit-metric.low .credit-label,
+.credit-metric.low .credit-value,
+.credit-metric.low .credit-meta {
+  color: var(--danger);
+}
+
+/* people rows / admin */
+.person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+
+.person .who {
+  flex: 1;
+  min-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.person .who small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* sections */
+section {
+  margin-bottom: 4px;
+  padding: 18px 0;
+}
+
+section + section {
+  border-top: 1px solid var(--hairline);
+}
+
+section h3 {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* feedback */
+.error {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
+.error.ok {
+  background: var(--ok-tint);
+  color: var(--ok-text);
+}
+
+.strength {
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.strength > div {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s, background 0.2s;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--ink-contrast);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: 0 6px 20px var(--shadow);
+  z-index: 10;
+  max-width: 90%;
+  text-align: center;
+}
+
+/* editor metric blocks */
+.monitor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.monitor-head label {
+  margin: 0;
+}
+
+.metric-block {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px 12px 12px;
+  background: var(--surface);
+}
+
+/* totp preview */
+.totp-preview {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+}
+
+.totp-code {
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.16em;
+}
+
+.totp-code.invalid {
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--danger);
+}
