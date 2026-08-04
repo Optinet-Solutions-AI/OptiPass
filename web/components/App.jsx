@@ -51,8 +51,6 @@ export default function App() {
     setSettings(s);
     applyTheme(s.theme);
 
-    if (!api.isConfigured?.() && false) return; // config baked in at build time
-
     const session = await api.getSession();
     if (!session) return setScreen('login');
     uidRef.current = session.user.id;
