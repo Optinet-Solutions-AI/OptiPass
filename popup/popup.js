@@ -90,12 +90,14 @@ const state = {
   adminProfiles: [],
   monitors: [],
   editMetrics: [], // metric sub-forms while the entry editor is open
+  editMetricIndex: null, // which metric the metric slide is editing
+  metricNew: false, // metric slide holds a freshly added metric
   editSecrets: [], // extra API-key secrets while the entry editor is open
 };
 
 // ---------- screens / feedback ----------
 
-const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'settings', 'admin', 'help'];
+const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'metric-edit', 'settings', 'admin', 'help'];
 
 function showScreen(name) {
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
@@ -895,6 +897,12 @@ async function openEdit(id, resume = null) {
 
   showScreen('edit');
   setTimeout(() => $('f-title').focus(), 50);
+
+  // A pick just landed: jump straight back into the metric slide.
+  if (resume && resume.draft?.pickIndex !== undefined && state.editMetrics[resume.draft.pickIndex]) {
+    state.metricNew = !!resume.draft.metricNew;
+    openMetricEdit(resume.draft.pickIndex);
+  }
 }
 
 $('btn-edit-back').addEventListener('click', () => showScreen('main'));
@@ -1814,11 +1822,135 @@ function blankMetric() {
   };
 }
 
+// Compact list in the entry editor; the form itself lives on its own
+// slide (screen-metric-edit) so the editor stays short.
 function renderMetricList() {
   const list = $('metric-list');
   list.innerHTML = '';
-  state.editMetrics.forEach((m, i) => list.appendChild(metricBlock(m, i)));
+  state.editMetrics.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'person';
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = m.label || 'Credits';
+    const small = document.createElement('small');
+    small.textContent = m.locked
+      ? "API metric - only members of its key vault can edit it"
+      : m.kind === 'api'
+        ? `API - ${m.apiPath || 'field not set'}${m.unit ? ` - ${m.unit}` : ''}`
+        : `Dashboard page - ${m.selector ? 'picked element' : m.keyword ? `keyword "${m.keyword}"` : 'not configured yet'}${m.unit ? ` - ${m.unit}` : ''}`;
+    who.appendChild(small);
+    row.appendChild(who);
+    if (!m.locked) {
+      row.appendChild(actionBtn('pen', 'Edit metric', () => openMetricEdit(i)));
+      row.appendChild(
+        actionBtn('trash', 'Remove metric', () => {
+          state.editMetrics.splice(i, 1);
+          renderMetricList();
+        })
+      );
+    }
+    list.appendChild(row);
+  });
 }
+
+function updateMetricKindUI() {
+  const isApi = $('mm-kind').value === 'api';
+  $('mm-page').classList.toggle('hidden', isApi);
+  $('mm-api').classList.toggle('hidden', !isApi);
+}
+
+$('mm-kind').addEventListener('change', updateMetricKindUI);
+
+function openMetricEdit(index) {
+  state.editMetricIndex = index;
+  const m = state.editMetrics[index];
+  $('metric-heading').textContent = m.id ? 'Edit metric' : 'Add metric';
+  $('mm-label').value = m.label || '';
+  $('mm-kind').value = m.kind || 'page';
+  $('mm-url').value = m.url || '';
+  $('mm-keyword').value = m.keyword || '';
+  $('mm-api-url').value = m.apiUrl || '';
+  $('mm-api-key').value = m.apiKey || '';
+  $('mm-api-path').value = m.apiPath || '';
+  const vs = $('mm-api-vault');
+  vs.innerHTML = '';
+  for (const mem of sortedVaults()) vs.append(new Option(mem.vaults.name, mem.vault_id));
+  if ([...vs.options].some((o) => o.value === m.apiVaultId)) vs.value = m.apiVaultId;
+  $('mm-unit').value = m.unit || '';
+  $('mm-threshold').value = m.threshold ?? '';
+  $('mm-picked').classList.toggle('hidden', !m.selector);
+  if (m.selector) {
+    $('mm-picked').textContent = m.pickedText
+      ? `Picked: "${m.pickedText}"`
+      : 'A picked element is saved for this metric.';
+  }
+  hideError('mm-result');
+  updateMetricKindUI();
+  showScreen('metric-edit');
+  setTimeout(() => $('mm-label').focus(), 50);
+}
+
+function syncMetricForm() {
+  const m = state.editMetrics[state.editMetricIndex];
+  if (!m) return;
+  m.label = $('mm-label').value;
+  m.kind = $('mm-kind').value;
+  m.url = $('mm-url').value;
+  m.keyword = $('mm-keyword').value;
+  m.apiUrl = $('mm-api-url').value;
+  m.apiKey = $('mm-api-key').value;
+  m.apiPath = $('mm-api-path').value;
+  m.apiVaultId = $('mm-api-vault').value;
+  m.unit = $('mm-unit').value;
+  m.threshold = $('mm-threshold').value;
+}
+
+$('btn-mm-done').addEventListener('click', () => {
+  syncMetricForm();
+  state.metricNew = false;
+  renderMetricList();
+  showScreen('edit');
+});
+
+$('btn-metric-back').addEventListener('click', () => {
+  if (state.metricNew) state.editMetrics.splice(state.editMetricIndex, 1);
+  state.metricNew = false;
+  renderMetricList();
+  showScreen('edit');
+});
+
+$('btn-mm-pick').addEventListener('click', () => {
+  syncMetricForm();
+  launchPicker(state.editMetricIndex);
+});
+
+$('btn-metric-add').addEventListener('click', () => {
+  state.editMetrics.push(blankMetric());
+  state.metricNew = true;
+  openMetricEdit(state.editMetrics.length - 1);
+});
+
+$('btn-mm-test').addEventListener('click', async () => {
+  hideError('mm-result');
+  const cfg = {
+    apiUrl: $('mm-api-url').value.trim(),
+    apiKey: $('mm-api-key').value.trim(),
+    jsonPath: $('mm-api-path').value.trim(),
+  };
+  if (!/^https:\/\//.test(cfg.apiUrl)) return showError('mm-result', 'Enter the full https:// API URL.');
+  if (!cfg.apiKey) return showError('mm-result', 'Paste the API key.');
+  const btn = $('btn-mm-test');
+  btn.disabled = true;
+  try {
+    const r = await fetchApiValue(cfg, { interactive: true });
+    showError('mm-result', `Found: ${r.numeric.toLocaleString()} (raw value: ${JSON.stringify(r.value)})`, true);
+  } catch (err) {
+    showError('mm-result', err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 function boundInput(type, m, prop, placeholder) {
   const el = document.createElement('input');
@@ -1830,136 +1962,6 @@ function boundInput(type, m, prop, placeholder) {
   return el;
 }
 
-function fieldLabel(text) {
-  const l = document.createElement('label');
-  l.textContent = text;
-  return l;
-}
-
-function metricBlock(m, i) {
-  const wrap = document.createElement('div');
-  wrap.className = 'metric-block';
-
-  if (m.locked) {
-    const note = document.createElement('p');
-    note.className = 'muted';
-    note.textContent = `"${m.label || 'Metric'}" uses an API key stored in a vault you're not in - only members of that vault can edit or remove it.`;
-    wrap.appendChild(note);
-    return wrap;
-  }
-
-  const head = document.createElement('div');
-  head.className = 'row';
-  const label = boundInput('text', m, 'label', 'Metric name, e.g. Bandwidth');
-  label.classList.add('grow');
-  const kind = document.createElement('select');
-  kind.append(new Option('Dashboard page', 'page'), new Option("Tool's API", 'api'));
-  kind.value = m.kind;
-  const remove = document.createElement('button');
-  remove.className = 'btn icon';
-  remove.title = 'Remove this metric';
-  remove.innerHTML = icon('trash');
-  remove.addEventListener('click', () => {
-    state.editMetrics.splice(i, 1);
-    renderMetricList();
-  });
-  head.append(label, kind, remove);
-
-  // read from the dashboard page
-  const pageDiv = document.createElement('div');
-  pageDiv.append(fieldLabel('Dashboard page (where the number is shown)'));
-  pageDiv.append(boundInput('text', m, 'url', 'https://tool.example.com/dashboard'));
-  const pick = document.createElement('button');
-  pick.className = 'btn';
-  pick.style.width = '100%';
-  pick.style.marginTop = '8px';
-  pick.textContent = 'Pick the number on the current page';
-  pick.addEventListener('click', () => launchPicker(i));
-  pageDiv.append(pick);
-  if (m.selector) {
-    const picked = document.createElement('div');
-    picked.className = 'error ok';
-    picked.textContent = m.pickedText
-      ? `Picked: "${m.pickedText}"`
-      : 'A picked element is saved for this metric.';
-    pageDiv.append(picked);
-  }
-  pageDiv.append(fieldLabel('Or find it by a nearby word'));
-  pageDiv.append(boundInput('text', m, 'keyword', 'e.g. "bandwidth" - grabs the number next to it'));
-
-  // read from the tool's API
-  const apiDiv = document.createElement('div');
-  apiDiv.append(fieldLabel('API endpoint that returns the number'));
-  apiDiv.append(boundInput('text', m, 'apiUrl', 'https://tool.example.com/api/balance'));
-  apiDiv.append(fieldLabel('API key (stored end-to-end encrypted)'));
-  apiDiv.append(boundInput('password', m, 'apiKey', 'Bearer token from the tool'));
-  apiDiv.append(fieldLabel('Response field that holds the number'));
-  apiDiv.append(boundInput('text', m, 'apiPath', 'e.g. remainingBandwidth or 0.balance'));
-  apiDiv.append(fieldLabel('Keep the key in vault'));
-  const vaultSel = document.createElement('select');
-  for (const mem of sortedVaults()) vaultSel.append(new Option(mem.vaults.name, mem.vault_id));
-  if ([...vaultSel.options].some((o) => o.value === m.apiVaultId)) vaultSel.value = m.apiVaultId;
-  vaultSel.addEventListener('change', () => (m.apiVaultId = vaultSel.value));
-  apiDiv.append(vaultSel);
-  const test = document.createElement('button');
-  test.className = 'btn';
-  test.style.width = '100%';
-  test.style.marginTop = '8px';
-  test.textContent = 'Test - fetch the value now';
-  const result = document.createElement('div');
-  result.className = 'error hidden';
-  test.addEventListener('click', async () => {
-    result.classList.add('hidden');
-    result.classList.remove('ok');
-    const cfg = { apiUrl: m.apiUrl.trim(), apiKey: m.apiKey.trim(), jsonPath: m.apiPath.trim() };
-    const show = (msg, ok) => {
-      result.textContent = msg;
-      result.classList.toggle('ok', !!ok);
-      result.classList.remove('hidden');
-    };
-    if (!/^https:\/\//.test(cfg.apiUrl)) return show('Enter the full https:// API URL.');
-    if (!cfg.apiKey) return show('Paste the API key.');
-    test.disabled = true;
-    try {
-      const r = await fetchApiValue(cfg, { interactive: true });
-      show(`Found: ${r.numeric.toLocaleString()} (raw value: ${JSON.stringify(r.value)})`, true);
-    } catch (err) {
-      show(err.message);
-    } finally {
-      test.disabled = false;
-    }
-  });
-  apiDiv.append(test, result);
-
-  const syncKind = () => {
-    pageDiv.classList.toggle('hidden', m.kind !== 'page');
-    apiDiv.classList.toggle('hidden', m.kind !== 'api');
-  };
-  kind.addEventListener('change', () => {
-    m.kind = kind.value;
-    syncKind();
-  });
-  syncKind();
-
-  const ut = document.createElement('div');
-  ut.className = 'row';
-  const unitWrap = document.createElement('div');
-  unitWrap.className = 'grow';
-  unitWrap.append(fieldLabel('Unit'), boundInput('text', m, 'unit', 'credits / GB / USD'));
-  const thrWrap = document.createElement('div');
-  const thr = boundInput('number', m, 'threshold', '');
-  thr.min = '0';
-  thrWrap.append(fieldLabel('Warn below'), thr);
-  ut.append(unitWrap, thrWrap);
-
-  wrap.append(head, pageDiv, apiDiv, ut);
-  return wrap;
-}
-
-$('btn-metric-add').addEventListener('click', () => {
-  state.editMetrics.push(blankMetric());
-  renderMetricList();
-});
 
 // ---------- extra API-key secrets (entry editor) ----------
 
@@ -2112,6 +2114,7 @@ async function launchPicker(pickIndex) {
       secrets: state.editSecrets,
       metrics: state.editMetrics,
       pickIndex,
+      metricNew: state.metricNew,
     },
   });
   try {

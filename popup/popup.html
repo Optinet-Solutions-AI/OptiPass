@@ -183,6 +183,52 @@
     </div>
   </div>
 
+  <!-- Metric slide: one credit/usage metric at a time -->
+  <div id="screen-metric-edit" class="screen hidden">
+    <header class="topbar">
+      <button id="btn-metric-back" class="btn icon" title="Cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+      <h2 id="metric-heading">Add metric</h2>
+    </header>
+    <label for="mm-label">Metric name</label>
+    <input type="text" id="mm-label" placeholder="e.g. Credits" autocomplete="off" />
+    <label for="mm-kind">How to read the value</label>
+    <select id="mm-kind">
+      <option value="page">From the dashboard page (when someone visits it)</option>
+      <option value="api">From the tool's API (refreshes automatically)</option>
+    </select>
+    <div id="mm-page">
+      <label for="mm-url">Dashboard page (where the number is shown)</label>
+      <input type="text" id="mm-url" placeholder="https://tool.example.com/dashboard" />
+      <button id="btn-mm-pick" class="btn" style="width:100%;margin-top:8px">Pick the number on the current page</button>
+      <div id="mm-picked" class="error ok hidden"></div>
+      <label for="mm-keyword">Or find it by a nearby word</label>
+      <input type="text" id="mm-keyword" placeholder='e.g. "credits" — grabs the number next to it' />
+    </div>
+    <div id="mm-api" class="hidden">
+      <label for="mm-api-url">API endpoint that returns the number</label>
+      <input type="text" id="mm-api-url" autocomplete="off" placeholder="https://tool.example.com/api/balance" />
+      <label for="mm-api-key">API key (stored end-to-end encrypted)</label>
+      <input type="password" id="mm-api-key" autocomplete="off" placeholder="Bearer token from the tool" />
+      <label for="mm-api-path">Response field that holds the number</label>
+      <input type="text" id="mm-api-path" autocomplete="off" placeholder="e.g. remainingBandwidth or 0.balance" />
+      <label for="mm-api-vault">Keep the key in vault</label>
+      <select id="mm-api-vault"></select>
+      <button id="btn-mm-test" class="btn" style="width:100%;margin-top:8px">Test &mdash; fetch the value now</button>
+      <div id="mm-result" class="error hidden"></div>
+    </div>
+    <div class="row">
+      <div class="grow">
+        <label for="mm-unit">Unit</label>
+        <input type="text" id="mm-unit" placeholder="credits / GB / USD" />
+      </div>
+      <div>
+        <label for="mm-threshold">Warn below</label>
+        <input type="number" id="mm-threshold" min="0" />
+      </div>
+    </div>
+    <button id="btn-mm-done" class="btn primary full">Done</button>
+  </div>
+
   <!-- Settings -->
   <div id="screen-settings" class="screen hidden">
     <header class="topbar">
