@@ -94,6 +94,13 @@ body {
   padding: 20px;
 }
 
+/* Dedicated window mode (popup.html?window=1): fill the window */
+html.windowed body {
+  margin: 0 auto;
+  min-height: 100vh;
+  max-height: none;
+}
+
 /* Opened as a full tab (or any wide viewport): breathe. */
 @media (min-width: 500px) {
   body {

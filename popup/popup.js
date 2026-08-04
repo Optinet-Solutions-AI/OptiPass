@@ -16,6 +16,44 @@ import { getVersions, newer } from '../lib/updates.js';
 
 const $ = (id) => document.getElementById(id);
 
+// Toolbar popups are force-closed by Chrome on any outside click, which
+// breaks pick-the-number flows. window=1 marks a dedicated window that
+// stays open while the user clicks around the page.
+const IN_WINDOW = new URLSearchParams(location.search).has('window');
+if (IN_WINDOW) document.documentElement.classList.add('windowed');
+
+function openOwnWindow() {
+  chrome.windows.create({
+    url: chrome.runtime.getURL('popup/popup.html?window=1'),
+    type: 'popup',
+    width: 430,
+    height: 700,
+  });
+}
+
+// The page we act on: in the toolbar popup that's the current tab; in
+// window mode it's the active tab of the last-focused normal window.
+async function getActiveNormalTab() {
+  if (!IN_WINDOW) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab;
+  }
+  const w = await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
+  const [tab] = await chrome.tabs.query({ active: true, windowId: w.id });
+  return tab;
+}
+
+// Window mode has no activeTab grant, so page access needs a one-time
+// host permission (we already declare optional_host_permissions).
+async function ensurePageAccess(tab, interactive) {
+  if (!IN_WINDOW) return true; // activeTab covers the toolbar popup
+  try {
+    return await ensureOriginPermission(tab.url, interactive);
+  } catch {
+    return false;
+  }
+}
+
 // Monochrome line icons (Feather-style), rendered via currentColor so
 // they follow the theme.
 const ICONS = {
@@ -167,7 +205,7 @@ async function boot() {
 
 async function getActiveHost() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveNormalTab();
     if (tab?.url) {
       state.activeUrl = tab.url;
       return new URL(tab.url).hostname.replace(/^www\./, '');
@@ -684,6 +722,11 @@ $('btn-lock').addEventListener('click', async () => {
 });
 
 $('btn-add').addEventListener('click', () => openEdit(null));
+$('btn-window').classList.toggle('hidden', IN_WINDOW);
+$('btn-window').addEventListener('click', () => {
+  openOwnWindow();
+  window.close();
+});
 $('btn-settings').addEventListener('click', () => {
   loadSettingsScreen();
   showScreen('settings');
@@ -737,7 +780,10 @@ function injectedFill(username, password) {
 
 async function fillCredentials(entry) {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveNormalTab();
+    if (!(await ensurePageAccess(tab, true))) {
+      return toast('OptiPass needs permission for that site - approve the prompt and try again.');
+    }
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id, allFrames: true },
       func: injectedFill,
@@ -1692,11 +1738,15 @@ async function captureMonitor(mon, { silent = false } = {}) {
       const r = await fetchApiValue(cfg, { interactive: !silent });
       patch = { last_value: String(r.value), last_numeric: r.numeric };
     } else {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = await getActiveNormalTab();
       if (!tab?.url) return false;
       const tabHost = new URL(tab.url).hostname.replace(/^www\./, '');
       if (monitorHost(mon.url) !== tabHost) {
         if (!silent) toast(`Open ${monitorHost(mon.url)} in this tab first`);
+        return false;
+      }
+      if (!(await ensurePageAccess(tab, !silent))) {
+        if (!silent) toast('OptiPass needs permission for that site - approve the prompt and try again.');
         return false;
       }
       const results = await chrome.scripting.executeScript({
@@ -2065,13 +2115,36 @@ async function launchPicker(pickIndex) {
     },
   });
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveNormalTab();
+    if (!(await ensurePageAccess(tab, true))) {
+      return showError('edit-error', 'OptiPass needs permission for that site to pick on it - approve the prompt and try again.');
+    }
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: injectedPicker });
-    window.close(); // hand control to the page; the pick resumes on reopen
+    if (IN_WINDOW) {
+      toast('Click the number on the page - the form comes back here automatically.');
+    } else {
+      // The toolbar popup dies on the outside click anyway; hand over to
+      // a dedicated window that survives and resumes the form by itself.
+      openOwnWindow();
+      window.close();
+    }
   } catch {
     showError('edit-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
   }
 }
+
+// In window mode the pick lands while we're still open: resume live.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'session' || !changes.optipass_pending_pick?.newValue) return;
+  const usable =
+    !$('screen-main').classList.contains('hidden') || !$('screen-edit').classList.contains('hidden');
+  if (!usable) return; // locked - the normal unlock flow resumes it instead
+  resumePendingPick().then((resumed) => {
+    if (resumed && IN_WINDOW) {
+      chrome.windows.getCurrent((w) => chrome.windows.update(w.id, { focused: true }));
+    }
+  });
+});
 
 // ---------- interactive tour ----------
 
