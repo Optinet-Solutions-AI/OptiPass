@@ -21,18 +21,29 @@ export default function Vault({
 }) {
   const [query, setQuery] = useState('');
   const [vaultFilter, setVaultFilter] = useState('all');
+  const [tagFilter, setTagFilter] = useState('all');
 
   const sortedVaults = [...memberships].sort((a, b) => {
     if (a.vaults.type !== b.vaults.type) return a.vaults.type === 'personal' ? -1 : 1;
     return a.vaults.name.localeCompare(b.vaults.name);
   });
 
-  let entries = items.filter((e) => vaultFilter === 'all' || e.vault_id === vaultFilter);
+  const allTags = [...new Set(items.flatMap((e) => e.data.tags || []))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  let entries = items.filter(
+    (e) =>
+      (vaultFilter === 'all' || e.vault_id === vaultFilter) &&
+      (tagFilter === 'all' || (e.data.tags || []).includes(tagFilter))
+  );
   entries = [...entries].sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
   const q = query.trim().toLowerCase();
   if (q) {
     entries = entries.filter((e) =>
-      [e.data.title, e.data.username, e.data.url].some((f) => (f || '').toLowerCase().includes(q))
+      [e.data.title, e.data.username, e.data.url, ...(e.data.tags || [])].some((f) =>
+        (f || '').toLowerCase().includes(q)
+      )
     );
   }
 
@@ -67,6 +78,14 @@ export default function Vault({
             <option key={m.vault_id} value={m.vault_id}>{m.vaults.name}</option>
           ))}
         </select>
+        {allTags.length > 0 && (
+          <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+            <option value="all">All labels</option>
+            {allTags.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        )}
         <button className="btn icon" title="Toggle light / dark" onClick={() => setTheme(dark ? 'light' : 'dark')}>
           <Icon name={dark ? 'sun' : 'moon'} />
         </button>
@@ -95,6 +114,9 @@ export default function Vault({
                       {m && m.vaults.type === 'shared' && vaultFilter === 'all' && (
                         <span className="badge gray">{m.vaults.name}</span>
                       )}
+                      {(entry.data.tags || []).map((t) => (
+                        <span key={t} className="badge">{t}</span>
+                      ))}
                     </div>
                   </div>
                   <div className="entry-actions">

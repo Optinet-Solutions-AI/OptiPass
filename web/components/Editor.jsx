@@ -25,6 +25,7 @@ export default function Editor({
   const [vaultId, setVaultId] = useState(entry?.vault_id || writableVaults[0]?.vault_id || '');
   const [title, setTitle] = useState(entry?.data.title || '');
   const [url, setUrl] = useState(entry?.data.url || '');
+  const [tags, setTags] = useState((entry?.data.tags || []).join(', '));
   const [username, setUsername] = useState(entry?.data.username || '');
   const [password, setPassword] = useState(entry?.data.password || '');
   const [reveal, setReveal] = useState(false);
@@ -128,6 +129,7 @@ export default function Editor({
       type: 'login',
       title: title.trim(),
       url: url.trim(),
+      tags: [...new Set(tags.split(',').map((t) => t.trim()).filter(Boolean))],
       username: username.trim(),
       password,
       totp: totpVal,
@@ -169,6 +171,8 @@ export default function Editor({
       <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Microsoft 365" />
       <label>Website</label>
       <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. login.microsoftonline.com" />
+      <label>Labels (comma-separated)</label>
+      <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Project Phoenix, proxies" autoComplete="off" />
       <label>Username / email</label>
       <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
       <label>Password</label>

@@ -119,6 +119,7 @@
     </header>
     <div class="topbar">
       <select id="vault-filter"></select>
+      <select id="tag-filter" class="hidden"></select>
       <button id="btn-theme" class="btn icon" title="Toggle light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
       <button id="btn-admin" class="btn hidden" title="Team administration">Admin</button>
     </div>
@@ -141,6 +142,8 @@
     <input type="text" id="f-title" placeholder="e.g. Microsoft 365" />
     <label for="f-url">Website</label>
     <input type="text" id="f-url" placeholder="e.g. login.microsoftonline.com" />
+    <label for="f-tags">Labels (comma-separated)</label>
+    <input type="text" id="f-tags" placeholder="e.g. Project Phoenix, proxies" autocomplete="off" />
     <label for="f-username">Username / email</label>
     <input type="text" id="f-username" autocomplete="off" />
     <label for="f-password">Password</label>

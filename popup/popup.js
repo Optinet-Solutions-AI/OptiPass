@@ -517,6 +517,7 @@ async function enterMain() {
     /* best effort */
   }
   populateVaultSelects();
+  populateTagFilter();
   $('btn-admin').classList.toggle('hidden', !['admin', 'super_admin'].includes(state.profile.role));
   renderList();
   if (await resumePendingPick()) return; // finish an in-progress monitor pick
@@ -548,11 +549,18 @@ function renderList() {
   const list = $('entry-list');
   list.innerHTML = '';
 
-  let entries = state.items.filter((e) => vaultFilter === 'all' || e.vault_id === vaultFilter);
+  const tagFilter = $('tag-filter').value || 'all';
+  let entries = state.items.filter(
+    (e) =>
+      (vaultFilter === 'all' || e.vault_id === vaultFilter) &&
+      (tagFilter === 'all' || (e.data.tags || []).includes(tagFilter))
+  );
   entries.sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
   if (query) {
     entries = entries.filter((e) =>
-      [e.data.title, e.data.username, e.data.url].some((f) => (f || '').toLowerCase().includes(query))
+      [e.data.title, e.data.username, e.data.url, ...(e.data.tags || [])].some((f) =>
+        (f || '').toLowerCase().includes(query)
+      )
     );
   } else {
     entries.sort((a, b) => Number(entryMatchesHost(b)) - Number(entryMatchesHost(a)));
@@ -588,6 +596,12 @@ function renderList() {
       vb.className = 'badge gray';
       vb.textContent = m.vaults.name;
       sub.appendChild(vb);
+    }
+    for (const tag of entry.data.tags || []) {
+      const tb = document.createElement('span');
+      tb.className = 'badge';
+      tb.textContent = tag;
+      sub.appendChild(tb);
     }
     info.append(title, sub);
 
@@ -646,6 +660,21 @@ async function copyTotp(entry) {
 
 $('search').addEventListener('input', renderList);
 $('vault-filter').addEventListener('change', renderList);
+$('tag-filter').addEventListener('change', renderList);
+
+// Label filter options come from the labels present on visible entries.
+function populateTagFilter() {
+  const sel = $('tag-filter');
+  const prev = sel.value;
+  const tags = [...new Set(state.items.flatMap((e) => e.data.tags || []))].sort((a, b) =>
+    a.localeCompare(b)
+  );
+  sel.innerHTML = '';
+  sel.append(new Option('All labels', 'all'));
+  for (const t of tags) sel.append(new Option(t, t));
+  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  sel.classList.toggle('hidden', tags.length === 0);
+}
 
 $('btn-lock').addEventListener('click', async () => {
   await keychain.lock();
@@ -759,6 +788,7 @@ async function openEdit(id, resume = null) {
 
   $('f-title').value = d?.title ?? entry?.data.title ?? '';
   $('f-url').value = d?.url ?? entry?.data.url ?? (entry ? '' : state.activeHost || '');
+  $('f-tags').value = d?.tags ?? (entry?.data.tags || []).join(', ');
   $('f-username').value = d?.username ?? entry?.data.username ?? '';
   $('f-password').value = d?.password ?? entry?.data.password ?? '';
   $('f-totp').value = d?.totp ?? entry?.data.totp ?? '';
@@ -936,6 +966,7 @@ $('btn-save').addEventListener('click', async () => {
     type: 'login',
     title,
     url: $('f-url').value.trim(),
+    tags: [...new Set($('f-tags').value.split(',').map((t) => t.trim()).filter(Boolean))],
     username: $('f-username').value.trim(),
     password: $('f-password').value,
     totp,
@@ -1007,6 +1038,7 @@ $('btn-save').addEventListener('click', async () => {
     }
 
     await keychain.resetAutoLock();
+    populateTagFilter();
     renderList();
     showScreen('main');
     toast(saveMsg);
@@ -2022,6 +2054,7 @@ async function launchPicker(pickIndex) {
       vault: $('f-vault').value,
       title: $('f-title').value,
       url: $('f-url').value,
+      tags: $('f-tags').value,
       username: $('f-username').value,
       password: $('f-password').value,
       totp: $('f-totp').value,
