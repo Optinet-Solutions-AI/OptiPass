@@ -474,6 +474,7 @@ export default function App() {
       {screen === 'edit' && (
         <Editor
           {...shared}
+          items={items}
           entry={editingEntry?.id ? items.find((e) => e.id === editingEntry.id) : null}
           entryMonitors={editingEntry?.id ? monitors.filter((m) => m.item_id === editingEntry.id) : []}
           decryptApiConfig={decryptApiConfig}

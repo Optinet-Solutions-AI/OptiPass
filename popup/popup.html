@@ -145,6 +145,19 @@
     <input type="text" id="f-url" placeholder="e.g. login.microsoftonline.com" />
     <label for="f-tags">Labels (comma-separated)</label>
     <input type="text" id="f-tags" placeholder="e.g. Project Phoenix, proxies" autocomplete="off" />
+    <label for="f-signin">Sign-in method</label>
+    <select id="f-signin">
+      <option value="password">Username &amp; password</option>
+      <option value="google">Sign in with Google</option>
+      <option value="github">Sign in with GitHub</option>
+      <option value="microsoft">Sign in with Microsoft</option>
+      <option value="apple">Sign in with Apple</option>
+      <option value="sso">Other SSO</option>
+    </select>
+    <div id="f-sso-wrap" class="hidden">
+      <label for="f-sso-item">Signs in with which account</label>
+      <select id="f-sso-item"></select>
+    </div>
     <label for="f-username">Username / email</label>
     <input type="text" id="f-username" autocomplete="off" />
     <label for="f-password">Password</label>

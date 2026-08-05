@@ -572,6 +572,14 @@ async function enterMain() {
 
 // ---------- main list ----------
 
+const SSO_LABELS = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
+
+function updateSigninUI() {
+  $('f-sso-wrap').classList.toggle('hidden', $('f-signin').value === 'password');
+}
+
+$('f-signin').addEventListener('change', updateSigninUI);
+
 function entryMatchesHost(entry) {
   if (!state.activeHost || !entry.data.url) return false;
   try {
@@ -598,8 +606,8 @@ function renderList() {
   entries.sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
   if (query) {
     entries = entries.filter((e) =>
-      [e.data.title, e.data.username, e.data.url, ...(e.data.tags || [])].some((f) =>
-        (f || '').toLowerCase().includes(query)
+      [e.data.title, e.data.username, e.data.url, e.data.ssoEmail, ...(e.data.tags || [])].some(
+        (f) => (f || '').toLowerCase().includes(query)
       )
     );
   } else {
@@ -623,7 +631,17 @@ function renderList() {
     title.textContent = entry.data.title || '(untitled)';
     const sub = document.createElement('div');
     sub.className = 'entry-sub';
-    sub.textContent = entry.data.username || entry.data.url || '';
+    sub.textContent = entry.data.username || entry.data.ssoEmail || entry.data.url || '';
+    const method = entry.data.signinMethod;
+    if (method && method !== 'password') {
+      const sb = document.createElement('span');
+      sb.className = 'badge';
+      sb.textContent = `via ${SSO_LABELS[method] || 'SSO'}`;
+      sb.title = entry.data.ssoEmail
+        ? `Signs in with ${SSO_LABELS[method] || 'SSO'} as ${entry.data.ssoEmail}`
+        : `Signs in with ${SSO_LABELS[method] || 'SSO'}`;
+      sub.appendChild(sb);
+    }
     if (!query && entryMatchesHost(entry)) {
       const badge = document.createElement('span');
       badge.className = 'badge';
@@ -647,13 +665,20 @@ function renderList() {
 
     const actions = document.createElement('div');
     actions.className = 'entry-actions';
-    if (state.activeHost) {
+    if (state.activeHost && (entry.data.password || entry.data.username)) {
       actions.append(actionBtn('fill', 'Fill on this page', () => fillCredentials(entry)));
     }
     actions.append(
-      actionBtn('user', 'Copy username', () => copyText(entry.data.username, 'Username copied')),
-      actionBtn('key', 'Copy password', () => copyText(entry.data.password, 'Password copied'))
+      actionBtn('user', 'Copy username', () =>
+        copyText(
+          entry.data.username || entry.data.ssoEmail,
+          entry.data.username ? 'Username copied' : 'SSO account email copied'
+        )
+      )
     );
+    if (entry.data.password) {
+      actions.append(actionBtn('key', 'Copy password', () => copyText(entry.data.password, 'Password copied')));
+    }
     if (entry.data.totp) {
       actions.append(actionBtn('shield', 'Copy 2FA code', () => copyTotp(entry)));
     }
@@ -837,6 +862,19 @@ async function openEdit(id, resume = null) {
   $('f-title').value = d?.title ?? entry?.data.title ?? '';
   $('f-url').value = d?.url ?? entry?.data.url ?? (entry ? '' : state.activeHost || '');
   $('f-tags').value = d?.tags ?? (entry?.data.tags || []).join(', ');
+
+  // Sign-in method + linked SSO identity entry
+  $('f-signin').value = d?.signinMethod ?? entry?.data.signinMethod ?? 'password';
+  const ssoSel = $('f-sso-item');
+  ssoSel.innerHTML = '';
+  ssoSel.append(new Option('(pick the account entry)', ''));
+  for (const e of [...state.items].sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''))) {
+    if (e.id === id) continue;
+    ssoSel.append(new Option(`${e.data.title}${e.data.username ? ` - ${e.data.username}` : ''}`, e.id));
+  }
+  const ssoId = d?.ssoItemId ?? entry?.data.ssoItemId ?? '';
+  if ([...ssoSel.options].some((o) => o.value === ssoId)) ssoSel.value = ssoId;
+  updateSigninUI();
   $('f-username').value = d?.username ?? entry?.data.username ?? '';
   $('f-password').value = d?.password ?? entry?.data.password ?? '';
   $('f-totp').value = d?.totp ?? entry?.data.totp ?? '';
@@ -1016,11 +1054,18 @@ $('btn-save').addEventListener('click', async () => {
 
   const now = new Date().toISOString();
   const existing = state.editingId ? state.items.find((e) => e.id === state.editingId) : null;
+  const signinMethod = $('f-signin').value;
+  const ssoItemId = signinMethod === 'password' ? null : $('f-sso-item').value || null;
+  const ssoLinked = ssoItemId ? state.items.find((e) => e.id === ssoItemId) : null;
+
   const data = {
     type: 'login',
     title,
     url: $('f-url').value.trim(),
     tags: [...new Set($('f-tags').value.split(',').map((t) => t.trim()).filter(Boolean))],
+    signinMethod,
+    ssoItemId,
+    ssoEmail: ssoLinked ? ssoLinked.data.username || '' : '',
     username: $('f-username').value.trim(),
     password: $('f-password').value,
     totp,
@@ -2107,6 +2152,8 @@ async function launchPicker(pickIndex) {
       title: $('f-title').value,
       url: $('f-url').value,
       tags: $('f-tags').value,
+      signinMethod: $('f-signin').value,
+      ssoItemId: $('f-sso-item').value,
       username: $('f-username').value,
       password: $('f-password').value,
       totp: $('f-totp').value,

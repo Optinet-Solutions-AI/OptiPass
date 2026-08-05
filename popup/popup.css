@@ -234,6 +234,8 @@ select.grow,
 select#vault-filter,
 select#tag-filter,
 select#f-vault,
+select#f-signin,
+select#f-sso-item,
 select#mv-vault {
   width: 100%;
 }

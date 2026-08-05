@@ -8,6 +8,7 @@ export default function Editor({
   entry,
   entryMonitors,
   memberships,
+  items,
   decryptApiConfig,
   fetchApiValue,
   showToast,
@@ -26,6 +27,8 @@ export default function Editor({
   const [title, setTitle] = useState(entry?.data.title || '');
   const [url, setUrl] = useState(entry?.data.url || '');
   const [tags, setTags] = useState((entry?.data.tags || []).join(', '));
+  const [signinMethod, setSigninMethod] = useState(entry?.data.signinMethod || 'password');
+  const [ssoItemId, setSsoItemId] = useState(entry?.data.ssoItemId || '');
   const [username, setUsername] = useState(entry?.data.username || '');
   const [password, setPassword] = useState(entry?.data.password || '');
   const [reveal, setReveal] = useState(false);
@@ -125,11 +128,15 @@ export default function Editor({
       return setError("The 2FA key isn't valid - paste the site's setup key or its otpauth:// link.");
     }
     const now = new Date().toISOString();
+    const ssoLinked = signinMethod !== 'password' && ssoItemId ? (items || []).find((e) => e.id === ssoItemId) : null;
     const data = {
       type: 'login',
       title: title.trim(),
       url: url.trim(),
       tags: [...new Set(tags.split(',').map((t) => t.trim()).filter(Boolean))],
+      signinMethod,
+      ssoItemId: signinMethod === 'password' ? null : ssoItemId || null,
+      ssoEmail: ssoLinked ? ssoLinked.data.username || '' : '',
       username: username.trim(),
       password,
       totp: totpVal,
@@ -173,6 +180,32 @@ export default function Editor({
       <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. login.microsoftonline.com" />
       <label>Labels (comma-separated)</label>
       <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Project Phoenix, proxies" autoComplete="off" />
+
+      <label>Sign-in method</label>
+      <select value={signinMethod} onChange={(e) => setSigninMethod(e.target.value)}>
+        <option value="password">Username &amp; password</option>
+        <option value="google">Sign in with Google</option>
+        <option value="github">Sign in with GitHub</option>
+        <option value="microsoft">Sign in with Microsoft</option>
+        <option value="apple">Sign in with Apple</option>
+        <option value="sso">Other SSO</option>
+      </select>
+      {signinMethod !== 'password' && (
+        <>
+          <label>Signs in with which account</label>
+          <select value={ssoItemId} onChange={(e) => setSsoItemId(e.target.value)}>
+            <option value="">(pick the account entry)</option>
+            {(items || [])
+              .filter((e) => e.id !== entry?.id)
+              .sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''))
+              .map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.data.title}{e.data.username ? ` - ${e.data.username}` : ''}
+                </option>
+              ))}
+          </select>
+        </>
+      )}
       <label>Username / email</label>
       <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
       <label>Password</label>

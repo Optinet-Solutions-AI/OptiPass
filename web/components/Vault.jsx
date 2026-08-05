@@ -41,11 +41,13 @@ export default function Vault({
   const q = query.trim().toLowerCase();
   if (q) {
     entries = entries.filter((e) =>
-      [e.data.title, e.data.username, e.data.url, ...(e.data.tags || [])].some((f) =>
-        (f || '').toLowerCase().includes(q)
+      [e.data.title, e.data.username, e.data.url, e.data.ssoEmail, ...(e.data.tags || [])].some(
+        (f) => (f || '').toLowerCase().includes(q)
       )
     );
   }
+
+  const SSO_LABELS = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
 
   async function copy(text, msg) {
     if (!text) return showToast('Nothing to copy');
@@ -110,7 +112,15 @@ export default function Vault({
                   <div className="entry-info">
                     <div className="entry-title">{entry.data.title || '(untitled)'}</div>
                     <div className="entry-sub">
-                      {entry.data.username || entry.data.url || ''}
+                      {entry.data.username || entry.data.ssoEmail || entry.data.url || ''}
+                      {entry.data.signinMethod && entry.data.signinMethod !== 'password' && (
+                        <span
+                          className="badge"
+                          title={entry.data.ssoEmail ? `Signs in as ${entry.data.ssoEmail}` : undefined}
+                        >
+                          via {SSO_LABELS[entry.data.signinMethod] || 'SSO'}
+                        </span>
+                      )}
                       {m && m.vaults.type === 'shared' && vaultFilter === 'all' && (
                         <span className="badge gray">{m.vaults.name}</span>
                       )}
@@ -120,8 +130,10 @@ export default function Vault({
                     </div>
                   </div>
                   <div className="entry-actions">
-                    <button className="btn icon" title="Copy username" onClick={() => copy(entry.data.username, 'Username copied')}><Icon name="user" /></button>
-                    <button className="btn icon" title="Copy password" onClick={() => copy(entry.data.password, 'Password copied')}><Icon name="key" /></button>
+                    <button className="btn icon" title="Copy username" onClick={() => copy(entry.data.username || entry.data.ssoEmail, entry.data.username ? 'Username copied' : 'SSO account email copied')}><Icon name="user" /></button>
+                    {entry.data.password && (
+                      <button className="btn icon" title="Copy password" onClick={() => copy(entry.data.password, 'Password copied')}><Icon name="key" /></button>
+                    )}
                     {entry.data.totp && (
                       <button className="btn icon" title="Copy 2FA code" onClick={() => copyTotp(entry)}><Icon name="shield" /></button>
                     )}
