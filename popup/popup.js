@@ -89,6 +89,7 @@ const state = {
   loginMode: 'signin', // or 'signup'
   adminProfiles: [],
   monitors: [],
+  editTopups: [], // payment records while the entry editor is open
   editMetrics: [], // metric sub-forms while the entry editor is open
   editMetricIndex: null, // which metric the metric slide is editing
   metricNew: false, // metric slide holds a freshly added metric
@@ -532,7 +533,10 @@ function populateVaultSelects() {
   const fv = $('f-vault');
   fv.innerHTML = '';
   for (const m of sortedVaults()) {
-    if (['manager', 'editor'].includes(m.role)) fv.append(new Option(m.vaults.name, m.vault_id));
+    if (['manager', 'editor'].includes(m.role)) {
+      const label = m.vaults.type === 'personal' ? 'Private (only me)' : `Team: ${m.vaults.name}`;
+      fv.append(new Option(label, m.vault_id));
+    }
   }
 }
 
@@ -573,7 +577,7 @@ async function enterMain() {
 
 // ---------- main list ----------
 
-const SSO_LABELS = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
+const SSO_LABELS = { oauth: 'OAuth', google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
 
 function updateSigninUI() {
   const sso = $('f-signin').value !== 'password';
@@ -857,7 +861,10 @@ async function openEdit(id, resume = null) {
   hideError('edit-error');
 
   const entry = id ? state.items.find((e) => e.id === id) : null;
-  $('edit-heading').textContent = entry ? 'Edit entry' : 'Add entry';
+  $('edit-heading').textContent = entry ? 'Edit tool' : 'Add tool';
+  // Adding shows only basic information; the sections appear after save.
+  $('edit-more').classList.toggle('hidden', !entry);
+  document.querySelectorAll('#edit-more details').forEach((el) => (el.open = false));
 
   const d = resume?.draft;
   const fv = $('f-vault');
@@ -874,8 +881,10 @@ async function openEdit(id, resume = null) {
   $('f-url').value = d?.url ?? entry?.data.url ?? (entry ? '' : state.activeHost || '');
   $('f-tags').value = d?.tags ?? (entry?.data.tags || []).join(', ');
 
-  // Sign-in method + linked SSO identity entry
-  $('f-signin').value = d?.signinMethod ?? entry?.data.signinMethod ?? 'password';
+  // Sign-in method + linked SSO identity entry (legacy provider values
+  // like 'google' collapse into 'oauth')
+  const rawMethod = d?.signinMethod ?? entry?.data.signinMethod ?? 'password';
+  $('f-signin').value = rawMethod === 'password' ? 'password' : 'oauth';
   const ssoSel = $('f-sso-item');
   ssoSel.innerHTML = '';
   ssoSel.append(new Option('(pick the account entry)', ''));
@@ -891,6 +900,16 @@ async function openEdit(id, resume = null) {
   $('f-totp').value = d?.totp ?? entry?.data.totp ?? '';
   $('f-notes').value = d?.notes ?? entry?.data.notes ?? '';
   updateTotpPreview();
+
+  // Payments & top-ups
+  $('f-payment-link').value = d?.paymentLink ?? entry?.data.paymentLink ?? '';
+  state.editTopups = (d?.topups ?? entry?.data.topups ?? []).map((t) => ({ ...t }));
+  $('tu-date').value = new Date().toISOString().slice(0, 10);
+  $('tu-amount').value = '';
+  $('tu-currency').value = 'USD';
+  $('tu-method').value = '';
+  $('tu-freq').value = 'topup';
+  renderTopupList();
 
   // ----- extra API-key secrets -----
   state.editSecrets = (d?.secrets ?? entry?.data.secrets ?? []).map((s) => ({ ...s }));
@@ -962,10 +981,61 @@ $('btn-reveal').addEventListener('click', () => {
 });
 
 $('btn-generate').addEventListener('click', () => {
-  const length = Math.min(64, Math.max(8, parseInt($('gen-length').value, 10) || 20));
-  $('f-password').value = generatePassword(length, { symbols: $('gen-symbols').checked });
+  $('f-password').value = generatePassword(20, { symbols: true });
   $('f-password').type = 'text';
   state.revealPassword = true;
+});
+
+// ---------- payments & top-ups ----------
+
+function openLink(raw) {
+  const url = (raw || '').trim();
+  if (!url) return toast('No link saved');
+  chrome.tabs.create({ url: url.includes('://') ? url : `https://${url}` });
+}
+
+$('btn-open-url').addEventListener('click', () => openLink($('f-url').value));
+$('btn-open-payment').addEventListener('click', () => openLink($('f-payment-link').value));
+
+const FREQ_LABELS = { topup: 'one-time top-up', monthly: 'monthly subscription' };
+
+function renderTopupList() {
+  const list = $('topup-list');
+  list.innerHTML = '';
+  const sorted = [...state.editTopups].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  for (const t of sorted) {
+    const row = document.createElement('div');
+    row.className = 'person';
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = `${Number(t.amount).toLocaleString()} ${t.currency || ''}`.trim();
+    const small = document.createElement('small');
+    small.textContent = `${t.date || 'no date'} - ${t.method || 'unspecified'} - ${FREQ_LABELS[t.frequency] || t.frequency}`;
+    who.appendChild(small);
+    row.appendChild(who);
+    row.appendChild(
+      actionBtn('trash', 'Remove this record', () => {
+        state.editTopups.splice(state.editTopups.indexOf(t), 1);
+        renderTopupList();
+      })
+    );
+    list.appendChild(row);
+  }
+}
+
+$('btn-topup-add').addEventListener('click', () => {
+  const amount = parseFloat($('tu-amount').value);
+  if (Number.isNaN(amount) || amount <= 0) return toast('Enter the amount paid');
+  state.editTopups.push({
+    date: $('tu-date').value || new Date().toISOString().slice(0, 10),
+    amount,
+    currency: ($('tu-currency').value.trim() || 'USD').toUpperCase(),
+    method: $('tu-method').value.trim(),
+    frequency: $('tu-freq').value,
+  });
+  $('tu-amount').value = '';
+  $('tu-method').value = '';
+  renderTopupList();
 });
 
 // Live 2FA code preview while editing (rotates every 30s).
@@ -1070,6 +1140,7 @@ $('btn-save').addEventListener('click', async () => {
   const ssoLinked = ssoItemId ? state.items.find((e) => e.id === ssoItemId) : null;
 
   const data = {
+    ...(existing?.data || {}), // preserve fields this form doesn't cover
     type: 'login',
     title,
     url: $('f-url').value.trim(),
@@ -1083,6 +1154,8 @@ $('btn-save').addEventListener('click', async () => {
     secrets: state.editSecrets
       .map((s) => ({ label: (s.label || '').trim(), value: s.value || '' }))
       .filter((s) => s.label || s.value),
+    paymentLink: $('f-payment-link').value.trim(),
+    topups: state.editTopups,
     notes: $('f-notes').value.trim(),
     createdAt: existing?.data.createdAt || now,
     updatedAt: now,
@@ -1150,6 +1223,13 @@ $('btn-save').addEventListener('click', async () => {
     await keychain.resetAutoLock();
     populateTagFilter();
     renderList();
+    if (!existing) {
+      // New tool: reopen it in full edit mode so the sections
+      // (MFA, keys, monitors, payments) can be filled in.
+      await openEdit(itemId);
+      toast('Tool added - open the sections below to add MFA, keys, monitors, or payments');
+      return;
+    }
     showScreen('main');
     toast(saveMsg);
   } catch (err) {
@@ -2170,6 +2250,8 @@ async function launchPicker(pickIndex) {
       totp: $('f-totp').value,
       notes: $('f-notes').value,
       secrets: state.editSecrets,
+      paymentLink: $('f-payment-link').value,
+      topups: state.editTopups,
       metrics: state.editMetrics,
       pickIndex,
       metricNew: state.metricNew,

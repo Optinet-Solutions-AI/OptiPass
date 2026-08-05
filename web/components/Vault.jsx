@@ -47,7 +47,7 @@ export default function Vault({
     );
   }
 
-  const SSO_LABELS = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
+  const SSO_LABELS = { oauth: 'OAuth', google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
 
   async function copy(text, msg) {
     if (!text) return showToast('Nothing to copy');

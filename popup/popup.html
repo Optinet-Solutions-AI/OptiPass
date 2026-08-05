@@ -116,7 +116,7 @@
   <div id="screen-main" class="screen hidden">
     <header class="topbar">
       <input type="search" id="search" placeholder="Search vault..." />
-      <button id="btn-add" class="btn icon" title="Add entry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button id="btn-add" class="btn icon" title="Add tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="btn-window" class="btn icon" title="Open in a window (stays open while you browse)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></button>
       <button id="btn-lock" class="btn icon" title="Lock vault"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button>
     </header>
@@ -130,33 +130,34 @@
     <ul id="entry-list"></ul>
     <div id="empty-state" class="empty hidden">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <p>No entries yet.</p>
-      <p class="muted">Click <strong>+</strong> to add your first login.</p>
+      <p>No tools yet.</p>
+      <p class="muted">Click <strong>+</strong> to add your first tool.</p>
     </div>
   </div>
 
-  <!-- Add / edit entry -->
+  <!-- Add / edit tool -->
   <div id="screen-edit" class="screen hidden">
     <header class="topbar">
       <button id="btn-edit-back" class="btn icon" title="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
-      <h2 id="edit-heading">Add entry</h2>
+      <h2 id="edit-heading">Add tool</h2>
     </header>
-    <label for="f-vault">Vault</label>
+
+    <label for="f-title">Tool name</label>
+    <input type="text" id="f-title" placeholder="e.g. OpenAI" />
+
+    <label for="f-url">Tool link</label>
+    <div class="row">
+      <input type="text" id="f-url" placeholder="https://platform.openai.com" />
+      <button id="btn-open-url" class="btn icon" title="Open link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></button>
+    </div>
+
+    <label for="f-vault">Who has access</label>
     <select id="f-vault"></select>
-    <label for="f-title">Title</label>
-    <input type="text" id="f-title" placeholder="e.g. Microsoft 365" />
-    <label for="f-url">Website</label>
-    <input type="text" id="f-url" placeholder="e.g. login.microsoftonline.com" />
-    <label for="f-tags">Labels (comma-separated)</label>
-    <input type="text" id="f-tags" placeholder="e.g. Project Phoenix, proxies" autocomplete="off" />
+
     <label for="f-signin">Sign-in method</label>
     <select id="f-signin">
       <option value="password">Username &amp; password</option>
-      <option value="google">Sign in with Google</option>
-      <option value="github">Sign in with GitHub</option>
-      <option value="microsoft">Sign in with Microsoft</option>
-      <option value="apple">Sign in with Apple</option>
-      <option value="sso">Other SSO</option>
+      <option value="oauth">OAuth (Google, GitHub, ...)</option>
     </select>
     <div id="f-sso-wrap" class="hidden">
       <label for="f-sso-item">Signs in with which account</label>
@@ -171,38 +172,69 @@
         <button id="btn-reveal" class="btn icon" title="Show / hide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
         <button id="btn-generate" class="btn icon" title="Generate password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></button>
       </div>
-      <div class="row gen-opts">
-        <label class="inline" for="gen-length">Length</label>
-        <input type="number" id="gen-length" min="8" max="64" value="20" />
-        <label class="inline checkbox"><input type="checkbox" id="gen-symbols" checked /> Symbols</label>
-      </div>
     </div>
-    <div class="sep"></div>
-    <label for="f-totp">2FA one-time passwords (optional)</label>
-    <input type="text" id="f-totp" autocomplete="off" placeholder="Paste the site's 2FA setup key or otpauth:// link" />
-    <div id="totp-preview" class="totp-preview hidden">
-      <span id="totp-code" class="totp-code"></span>
-      <span id="totp-left" class="muted"></span>
+
+    <label for="f-tags">Tags (comma-separated)</label>
+    <input type="text" id="f-tags" placeholder="e.g. Project Phoenix, AI tools" autocomplete="off" />
+
+    <div id="edit-more">
+      <details id="acc-mfa">
+        <summary>MFA &mdash; one-time passwords</summary>
+        <label for="f-totp">2FA setup key</label>
+        <input type="text" id="f-totp" autocomplete="off" placeholder="Paste the site's 2FA setup key or otpauth:// link" />
+        <div id="totp-preview" class="totp-preview hidden">
+          <span id="totp-code" class="totp-code"></span>
+          <span id="totp-left" class="muted"></span>
+        </div>
+      </details>
+
+      <details id="acc-secrets">
+        <summary>API keys &amp; secrets</summary>
+        <div id="secret-list" class="stack"></div>
+        <button id="btn-secret-add" class="btn small" type="button" style="margin-top:10px">+ Add secret</button>
+      </details>
+
+      <details id="acc-monitors">
+        <summary>Credit &amp; usage monitors</summary>
+        <div id="metric-list" class="stack"></div>
+        <button id="btn-metric-add" class="btn small" type="button" style="margin-top:10px">+ Add metric</button>
+      </details>
+
+      <details id="acc-payments">
+        <summary>Payments &amp; top-ups</summary>
+        <label for="f-payment-link">Payment link</label>
+        <div class="row">
+          <input type="text" id="f-payment-link" placeholder="https://tool.example.com/billing" autocomplete="off" />
+          <button id="btn-open-payment" class="btn icon" title="Open payment link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg></button>
+        </div>
+        <div id="topup-list" class="stack"></div>
+        <label>Record a payment</label>
+        <div class="row">
+          <input type="date" id="tu-date" />
+          <input type="number" id="tu-amount" placeholder="Amount" min="0" step="0.01" style="width:96px" />
+          <input type="text" id="tu-currency" placeholder="USD" style="width:64px" autocomplete="off" />
+        </div>
+        <div class="row">
+          <input type="text" id="tu-method" placeholder="Mode of payment, e.g. card" autocomplete="off" />
+          <select id="tu-freq">
+            <option value="topup">One-time top-up</option>
+            <option value="monthly">Monthly subscription</option>
+          </select>
+          <button id="btn-topup-add" class="btn small" type="button">Add</button>
+        </div>
+      </details>
+
+      <details id="acc-notes">
+        <summary>Notes</summary>
+        <textarea id="f-notes" rows="3"></textarea>
+      </details>
+
+      <button id="btn-delete" class="btn danger full hidden">Delete tool</button>
     </div>
-    <div class="sep"></div>
-    <div class="monitor-head">
-      <label>API keys &amp; secrets</label>
-      <button id="btn-secret-add" class="btn small" type="button">+ Add secret</button>
-    </div>
-    <div id="secret-list" class="stack"></div>
-    <div class="sep"></div>
-    <div class="monitor-head">
-      <label>Credit &amp; usage monitors</label>
-      <button id="btn-metric-add" class="btn small" type="button">+ Add metric</button>
-    </div>
-    <div id="metric-list" class="stack"></div>
-    <div class="sep"></div>
-    <label for="f-notes">Notes</label>
-    <textarea id="f-notes" rows="3"></textarea>
+
     <div id="edit-error" class="error hidden"></div>
     <div class="row actions">
       <button id="btn-save" class="btn primary grow">Save</button>
-      <button id="btn-delete" class="btn danger hidden">Delete</button>
     </div>
   </div>
 

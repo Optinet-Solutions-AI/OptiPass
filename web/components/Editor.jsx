@@ -27,7 +27,9 @@ export default function Editor({
   const [title, setTitle] = useState(entry?.data.title || '');
   const [url, setUrl] = useState(entry?.data.url || '');
   const [tags, setTags] = useState((entry?.data.tags || []).join(', '));
-  const [signinMethod, setSigninMethod] = useState(entry?.data.signinMethod || 'password');
+  const [signinMethod, setSigninMethod] = useState(
+    (entry?.data.signinMethod || 'password') === 'password' ? 'password' : 'oauth'
+  );
   const [ssoItemId, setSsoItemId] = useState(entry?.data.ssoItemId || '');
   const [username, setUsername] = useState(entry?.data.username || '');
   const [password, setPassword] = useState(entry?.data.password || '');
@@ -130,6 +132,7 @@ export default function Editor({
     const now = new Date().toISOString();
     const ssoLinked = signinMethod !== 'password' && ssoItemId ? (items || []).find((e) => e.id === ssoItemId) : null;
     const data = {
+      ...(entry?.data || {}), // preserve fields this form doesn't cover (top-ups, payment link...)
       type: 'login',
       title: title.trim(),
       url: url.trim(),
@@ -167,28 +170,26 @@ export default function Editor({
         <h2>{entry ? 'Edit entry' : 'Add entry'}</h2>
       </header>
 
-      <label>Vault</label>
+      <label>Who has access</label>
       <select value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
         {writableVaults.map((m) => (
-          <option key={m.vault_id} value={m.vault_id}>{m.vaults.name}</option>
+          <option key={m.vault_id} value={m.vault_id}>
+            {m.vaults.type === 'personal' ? 'Private (only me)' : `Team: ${m.vaults.name}`}
+          </option>
         ))}
       </select>
 
-      <label>Title</label>
-      <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Microsoft 365" />
-      <label>Website</label>
-      <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="e.g. login.microsoftonline.com" />
-      <label>Labels (comma-separated)</label>
-      <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Project Phoenix, proxies" autoComplete="off" />
+      <label>Tool name</label>
+      <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. OpenAI" />
+      <label>Tool link</label>
+      <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://platform.openai.com" />
+      <label>Tags (comma-separated)</label>
+      <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Project Phoenix, AI tools" autoComplete="off" />
 
       <label>Sign-in method</label>
       <select value={signinMethod} onChange={(e) => setSigninMethod(e.target.value)}>
         <option value="password">Username &amp; password</option>
-        <option value="google">Sign in with Google</option>
-        <option value="github">Sign in with GitHub</option>
-        <option value="microsoft">Sign in with Microsoft</option>
-        <option value="apple">Sign in with Apple</option>
-        <option value="sso">Other SSO</option>
+        <option value="oauth">OAuth (Google, GitHub, ...)</option>
       </select>
       {signinMethod !== 'password' && (
         <>
