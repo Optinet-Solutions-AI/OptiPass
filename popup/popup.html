@@ -158,18 +158,20 @@
       <label for="f-sso-item">Signs in with which account</label>
       <select id="f-sso-item"></select>
     </div>
-    <label for="f-username">Username / email</label>
-    <input type="text" id="f-username" autocomplete="off" />
-    <label for="f-password">Password</label>
-    <div class="row">
-      <input type="password" id="f-password" autocomplete="off" />
-      <button id="btn-reveal" class="btn icon" title="Show / hide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-      <button id="btn-generate" class="btn icon" title="Generate password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></button>
-    </div>
-    <div class="row gen-opts">
-      <label class="inline" for="gen-length">Length</label>
-      <input type="number" id="gen-length" min="8" max="64" value="20" />
-      <label class="inline checkbox"><input type="checkbox" id="gen-symbols" checked /> Symbols</label>
+    <div id="f-cred-wrap">
+      <label for="f-username">Username / email</label>
+      <input type="text" id="f-username" autocomplete="off" />
+      <label for="f-password">Password</label>
+      <div class="row">
+        <input type="password" id="f-password" autocomplete="off" />
+        <button id="btn-reveal" class="btn icon" title="Show / hide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        <button id="btn-generate" class="btn icon" title="Generate password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></button>
+      </div>
+      <div class="row gen-opts">
+        <label class="inline" for="gen-length">Length</label>
+        <input type="number" id="gen-length" min="8" max="64" value="20" />
+        <label class="inline checkbox"><input type="checkbox" id="gen-symbols" checked /> Symbols</label>
+      </div>
     </div>
     <label for="f-totp">2FA one-time passwords (optional)</label>
     <input type="text" id="f-totp" autocomplete="off" placeholder="Paste the site's 2FA setup key or otpauth:// link" />

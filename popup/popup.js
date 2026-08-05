@@ -575,7 +575,9 @@ async function enterMain() {
 const SSO_LABELS = { google: 'Google', github: 'GitHub', microsoft: 'Microsoft', apple: 'Apple', sso: 'SSO' };
 
 function updateSigninUI() {
-  $('f-sso-wrap').classList.toggle('hidden', $('f-signin').value === 'password');
+  const sso = $('f-signin').value !== 'password';
+  $('f-sso-wrap').classList.toggle('hidden', !sso);
+  $('f-cred-wrap').classList.toggle('hidden', sso); // SSO needs no username/password
 }
 
 $('f-signin').addEventListener('change', updateSigninUI);

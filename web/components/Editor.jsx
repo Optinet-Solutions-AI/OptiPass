@@ -206,28 +206,32 @@ export default function Editor({
           </select>
         </>
       )}
-      <label>Username / email</label>
-      <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
-      <label>Password</label>
-      <div className="row">
-        <input type={reveal ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
-        <button className="btn icon" title="Show / hide" onClick={() => setReveal(!reveal)}><Icon name="eye" /></button>
-        <button
-          className="btn icon"
-          title="Generate password"
-          onClick={() => {
-            setPassword(generatePassword(Math.min(64, Math.max(8, genLen)), { symbols: genSym }));
-            setReveal(true);
-          }}
-        >
-          <Icon name="zap" />
-        </button>
-      </div>
-      <div className="row muted" style={{ fontSize: 12 }}>
-        <span>Length</span>
-        <input type="number" min="8" max="64" value={genLen} onChange={(e) => setGenLen(parseInt(e.target.value, 10) || 20)} />
-        <label className="checkbox"><input type="checkbox" checked={genSym} onChange={(e) => setGenSym(e.target.checked)} /> Symbols</label>
-      </div>
+      {signinMethod === 'password' && (
+        <>
+          <label>Username / email</label>
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+          <label>Password</label>
+          <div className="row">
+            <input type={reveal ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
+            <button className="btn icon" title="Show / hide" onClick={() => setReveal(!reveal)}><Icon name="eye" /></button>
+            <button
+              className="btn icon"
+              title="Generate password"
+              onClick={() => {
+                setPassword(generatePassword(Math.min(64, Math.max(8, genLen)), { symbols: genSym }));
+                setReveal(true);
+              }}
+            >
+              <Icon name="zap" />
+            </button>
+          </div>
+          <div className="row muted" style={{ fontSize: 12 }}>
+            <span>Length</span>
+            <input type="number" min="8" max="64" value={genLen} onChange={(e) => setGenLen(parseInt(e.target.value, 10) || 20)} />
+            <label className="checkbox"><input type="checkbox" checked={genSym} onChange={(e) => setGenSym(e.target.checked)} /> Symbols</label>
+          </div>
+        </>
+      )}
 
       <label>2FA one-time passwords (optional)</label>
       <input type="text" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="Paste the site's 2FA setup key or otpauth:// link" autoComplete="off" />
