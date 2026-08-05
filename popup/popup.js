@@ -100,6 +100,7 @@ const state = {
 const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'metric-edit', 'settings', 'admin', 'help'];
 
 function showScreen(name) {
+  $('splash').classList.add('hidden');
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
   const focus = { login: 'login-email', 'master-setup': 'ms-pw', 'pin-setup': 'ps-pin', main: 'search' }[name];
   if (focus) setTimeout(() => $(focus).focus(), 50);
@@ -657,11 +658,19 @@ function renderList() {
       vb.textContent = m.vaults.name;
       sub.appendChild(vb);
     }
-    for (const tag of entry.data.tags || []) {
+    const tags = entry.data.tags || [];
+    for (const tag of tags.slice(0, 2)) {
       const tb = document.createElement('span');
       tb.className = 'badge';
       tb.textContent = tag;
       sub.appendChild(tb);
+    }
+    if (tags.length > 2) {
+      const more = document.createElement('span');
+      more.className = 'badge gray';
+      more.textContent = `+${tags.length - 2}`;
+      more.title = tags.slice(2).join(', ');
+      sub.appendChild(more);
     }
     info.append(title, sub);
 

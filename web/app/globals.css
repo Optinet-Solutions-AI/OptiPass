@@ -59,6 +59,23 @@ body {
   padding: 48px 24px 64px;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .screen {
+    animation: screen-in 0.18s ease;
+  }
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .hidden {
   display: none !important;
 }
@@ -391,6 +408,13 @@ textarea {
 .entry-actions {
   display: flex;
   gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.entry-row:hover .entry-actions,
+.entry-row:focus-within .entry-actions {
+  opacity: 1;
 }
 
 .entry-actions .btn.icon {

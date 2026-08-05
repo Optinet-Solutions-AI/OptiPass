@@ -94,6 +94,54 @@ body {
   padding: 20px;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .screen {
+    animation: screen-in 0.18s ease;
+  }
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Splash while the vault loads (hidden on first screen switch) */
+#splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 440px;
+}
+
+#splash .brand-logo {
+  margin: 0;
+  animation: splash-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes splash-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+}
+
+/* Hairline separators between editor sections */
+.sep {
+  border-top: 1px solid var(--hairline);
+  margin: 18px 0 2px;
+}
+
 /* Dedicated window mode (popup.html?window=1): fill the window */
 html.windowed body {
   margin: 0 auto;
@@ -259,6 +307,16 @@ textarea {
   gap: 8px;
   margin: 8px 0;
   flex-wrap: wrap;
+}
+
+/* Save bar stays reachable on long editor forms */
+.row.actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--hairline);
+  padding: 10px 0;
+  margin: 14px 0 -8px;
 }
 
 .row input[type="text"],
@@ -549,6 +607,13 @@ textarea {
 .entry-actions {
   display: flex;
   gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.entry-row:hover .entry-actions,
+.entry-row:focus-within .entry-actions {
+  opacity: 1;
 }
 
 .entry-actions .btn.icon {
@@ -655,10 +720,18 @@ textarea {
 
 .empty {
   text-align: center;
-  padding: 56px 0;
+  padding: 44px 0;
 }
 
-.empty p:first-child {
+.empty svg {
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+  opacity: 0.6;
+  margin-bottom: 12px;
+}
+
+.empty svg + p {
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 6px;
