@@ -862,9 +862,11 @@ async function openEdit(id, resume = null) {
 
   const entry = id ? state.items.find((e) => e.id === id) : null;
   $('edit-heading').textContent = entry ? 'Edit tool' : 'Add tool';
-  // Adding shows only basic information; the sections appear after save.
+  // Adding shows only basic information (open); when editing, every
+  // section - including basic information - starts collapsed.
   $('edit-more').classList.toggle('hidden', !entry);
-  document.querySelectorAll('#edit-more details').forEach((el) => (el.open = false));
+  document.querySelectorAll('details.acc').forEach((el) => (el.open = false));
+  $('acc-basic').open = !entry;
 
   const d = resume?.draft;
   const fv = $('f-vault');

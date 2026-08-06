@@ -142,8 +142,10 @@
       <h2 id="edit-heading">Add tool</h2>
     </header>
 
-    <label for="f-title">Tool name</label>
-    <input type="text" id="f-title" placeholder="e.g. OpenAI" />
+    <details id="acc-basic" class="acc">
+      <summary>Basic information</summary>
+      <label for="f-title">Tool name</label>
+      <input type="text" id="f-title" placeholder="e.g. OpenAI" />
 
     <label for="f-url">Tool link</label>
     <div class="row">
@@ -173,12 +175,16 @@
         <button id="btn-generate" class="btn icon" title="Generate password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></button>
       </div>
     </div>
-
-    <label for="f-tags">Tags (comma-separated)</label>
-    <input type="text" id="f-tags" placeholder="e.g. Project Phoenix, AI tools" autocomplete="off" />
+    </details>
 
     <div id="edit-more">
-      <details id="acc-mfa">
+      <details id="acc-tags" class="acc">
+        <summary>Tags</summary>
+        <label for="f-tags">Tags (comma-separated)</label>
+        <input type="text" id="f-tags" placeholder="e.g. Project Phoenix, AI tools" autocomplete="off" />
+      </details>
+
+      <details id="acc-mfa" class="acc">
         <summary>MFA &mdash; one-time passwords</summary>
         <label for="f-totp">2FA setup key</label>
         <input type="text" id="f-totp" autocomplete="off" placeholder="Paste the site's 2FA setup key or otpauth:// link" />
@@ -188,19 +194,19 @@
         </div>
       </details>
 
-      <details id="acc-secrets">
+      <details id="acc-secrets" class="acc">
         <summary>API keys &amp; secrets</summary>
         <div id="secret-list" class="stack"></div>
         <button id="btn-secret-add" class="btn small" type="button" style="margin-top:10px">+ Add secret</button>
       </details>
 
-      <details id="acc-monitors">
+      <details id="acc-monitors" class="acc">
         <summary>Credit &amp; usage monitors</summary>
         <div id="metric-list" class="stack"></div>
         <button id="btn-metric-add" class="btn small" type="button" style="margin-top:10px">+ Add metric</button>
       </details>
 
-      <details id="acc-payments">
+      <details id="acc-payments" class="acc">
         <summary>Payments &amp; top-ups</summary>
         <label for="f-payment-link">Payment link</label>
         <div class="row">
@@ -224,7 +230,7 @@
         </div>
       </details>
 
-      <details id="acc-notes">
+      <details id="acc-notes" class="acc">
         <summary>Notes</summary>
         <textarea id="f-notes" rows="3"></textarea>
       </details>

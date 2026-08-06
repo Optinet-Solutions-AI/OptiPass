@@ -147,7 +147,7 @@ body {
   margin-top: 18px;
 }
 
-#edit-more details {
+details.acc {
   border: 1px solid var(--hairline);
   border-radius: 10px;
   background: var(--surface);
@@ -155,11 +155,11 @@ body {
   padding: 0 12px;
 }
 
-#edit-more details[open] {
+details.acc[open] {
   padding-bottom: 12px;
 }
 
-#edit-more summary {
+details.acc summary {
   cursor: pointer;
   list-style: none;
   padding: 12px 0;
@@ -174,11 +174,11 @@ body {
   user-select: none;
 }
 
-#edit-more summary::-webkit-details-marker {
+details.acc summary::-webkit-details-marker {
   display: none;
 }
 
-#edit-more summary::after {
+details.acc summary::after {
   content: '';
   width: 7px;
   height: 7px;
@@ -189,11 +189,11 @@ body {
   margin-right: 2px;
 }
 
-#edit-more details[open] summary::after {
+details.acc[open] summary::after {
   transform: rotate(-135deg);
 }
 
-#edit-more details label:first-of-type {
+details.acc label:first-of-type {
   margin-top: 2px;
 }
 
