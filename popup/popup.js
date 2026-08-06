@@ -68,6 +68,10 @@ const ICONS = {
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
   trash:
     '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  external:
+    '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/>',
 };
 
 function icon(name) {
@@ -89,6 +93,10 @@ const state = {
   loginMode: 'signin', // or 'signup'
   adminProfiles: [],
   monitors: [],
+  page: 0, // vault list pagination
+  expandedId: null, // which tool row is expanded
+  payGuideItemId: null, // entry shown on the payment-guide screen
+  editPayReqs: [], // pending payment requests while the editor is open
   editTopups: [], // payment records while the entry editor is open
   editMetrics: [], // metric sub-forms while the entry editor is open
   editMetricIndex: null, // which metric the metric slide is editing
@@ -98,7 +106,7 @@ const state = {
 
 // ---------- screens / feedback ----------
 
-const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'metric-edit', 'settings', 'admin', 'help'];
+const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'metric-edit', 'payguide', 'settings', 'admin', 'help'];
 
 function showScreen(name) {
   $('splash').classList.add('hidden');
@@ -566,6 +574,13 @@ async function enterMain() {
   $('btn-admin').classList.toggle('hidden', !['admin', 'super_admin'].includes(state.profile.role));
   renderList();
   if (await resumePendingPick()) return; // finish an in-progress monitor pick
+  updatePendingPayHosts();
+  if (payGuideParam) {
+    const target = payGuideParam;
+    payGuideParam = null;
+    openPayGuide(target);
+    return;
+  }
   showScreen('main');
   autoCaptureMonitors(); // fire-and-forget refresh for the current site
   if (!state.settings.tourDone) {
@@ -598,13 +613,15 @@ function entryMatchesHost(entry) {
   }
 }
 
+const PAGE_SIZE = 8;
+
 function renderList() {
   const query = $('search').value.trim().toLowerCase();
   const vaultFilter = $('vault-filter').value || 'all';
+  const tagFilter = $('tag-filter').value || 'all';
   const list = $('entry-list');
   list.innerHTML = '';
 
-  const tagFilter = $('tag-filter').value || 'all';
   let entries = state.items.filter(
     (e) =>
       (vaultFilter === 'all' || e.vault_id === vaultFilter) &&
@@ -623,9 +640,22 @@ function renderList() {
 
   $('empty-state').classList.toggle('hidden', entries.length > 0);
 
-  for (const entry of entries) {
+  const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  state.page = Math.min(state.page, pages - 1);
+  const pageEntries = entries.slice(state.page * PAGE_SIZE, (state.page + 1) * PAGE_SIZE);
+
+  for (const entry of pageEntries) {
     const li = document.createElement('li');
     li.className = 'entry';
+    const expanded = state.expandedId === entry.id;
+
+    // Collapsed header: avatar + name + status badges + chevron
+    const head = document.createElement('div');
+    head.className = 'entry-head' + (expanded ? ' open' : '');
+    head.addEventListener('click', () => {
+      state.expandedId = expanded ? null : entry.id;
+      renderList();
+    });
 
     const avatar = document.createElement('div');
     avatar.className = 'entry-avatar';
@@ -636,82 +666,110 @@ function renderList() {
     const title = document.createElement('div');
     title.className = 'entry-title';
     title.textContent = entry.data.title || '(untitled)';
-    const sub = document.createElement('div');
-    sub.className = 'entry-sub';
-    sub.textContent = entry.data.username || entry.data.ssoEmail || entry.data.url || '';
-    const method = entry.data.signinMethod;
-    if (method && method !== 'password') {
-      const sb = document.createElement('span');
-      sb.className = 'badge';
-      sb.textContent = `via ${SSO_LABELS[method] || 'SSO'}`;
-      sb.title = entry.data.ssoEmail
-        ? `Signs in with ${SSO_LABELS[method] || 'SSO'} as ${entry.data.ssoEmail}`
-        : `Signs in with ${SSO_LABELS[method] || 'SSO'}`;
-      sub.appendChild(sb);
-    }
-    if (!query && entryMatchesHost(entry)) {
-      const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = 'this site';
-      sub.appendChild(badge);
-    }
-    const m = state.memberships.find((x) => x.vault_id === entry.vault_id);
-    if (m && m.vaults.type === 'shared' && vaultFilter === 'all') {
-      const vb = document.createElement('span');
-      vb.className = 'badge gray';
-      vb.textContent = m.vaults.name;
-      sub.appendChild(vb);
-    }
-    const tags = entry.data.tags || [];
-    for (const tag of tags.slice(0, 2)) {
-      const tb = document.createElement('span');
-      tb.className = 'badge';
-      tb.textContent = tag;
-      sub.appendChild(tb);
-    }
-    if (tags.length > 2) {
-      const more = document.createElement('span');
-      more.className = 'badge gray';
-      more.textContent = `+${tags.length - 2}`;
-      more.title = tags.slice(2).join(', ');
-      sub.appendChild(more);
-    }
-    info.append(title, sub);
+    info.appendChild(title);
 
-    const actions = document.createElement('div');
-    actions.className = 'entry-actions';
-    if (state.activeHost && (entry.data.password || entry.data.username)) {
-      actions.append(actionBtn('fill', 'Fill on this page', () => fillCredentials(entry)));
-    }
-    actions.append(
-      actionBtn('user', 'Copy username', () =>
-        copyText(
-          entry.data.username || entry.data.ssoEmail,
-          entry.data.username ? 'Username copied' : 'SSO account email copied'
-        )
-      )
-    );
-    if (entry.data.password) {
-      actions.append(actionBtn('key', 'Copy password', () => copyText(entry.data.password, 'Password copied')));
-    }
-    if (entry.data.totp) {
-      actions.append(actionBtn('shield', 'Copy 2FA code', () => copyTotp(entry)));
-    }
-    if (vaultWritable(entry.vault_id)) {
-      actions.append(actionBtn('pen', 'Edit', () => openEdit(entry.id)));
-    }
-
-    const row = document.createElement('div');
-    row.className = 'entry-row';
-    row.append(avatar, info, actions);
-    li.appendChild(row);
-
+    const flags = document.createElement('div');
+    flags.className = 'entry-flags';
     const mons = monitorsForItem(entry.id);
-    if (mons.length) li.appendChild(creditBox(mons));
+    if (!query && entryMatchesHost(entry)) flags.appendChild(makeBadge('this site', ''));
+    if ((entry.data.paymentRequests || []).some((r) => r.status === 'pending')) {
+      flags.appendChild(makeBadge('payment pending', 'low'));
+    }
+    if (mons.some(monitorIsLow)) flags.appendChild(makeBadge('LOW', 'low'));
+
+    const chev = document.createElement('span');
+    chev.className = 'chev' + (expanded ? ' open' : '');
+
+    head.append(avatar, info, flags, chev);
+    li.appendChild(head);
+
+    if (expanded) {
+      const body = document.createElement('div');
+      body.className = 'entry-body';
+
+      const sub = document.createElement('div');
+      sub.className = 'entry-sub';
+      sub.textContent = entry.data.username || entry.data.ssoEmail || entry.data.url || '';
+      const method = entry.data.signinMethod;
+      if (method && method !== 'password') {
+        sub.appendChild(makeBadge(`via ${SSO_LABELS[method] || 'SSO'}`, ''));
+      }
+      const m = state.memberships.find((x) => x.vault_id === entry.vault_id);
+      if (m && m.vaults.type === 'shared') sub.appendChild(makeBadge(m.vaults.name, 'gray'));
+      const tags = entry.data.tags || [];
+      for (const tag of tags.slice(0, 2)) sub.appendChild(makeBadge(tag, ''));
+      if (tags.length > 2) sub.appendChild(makeBadge(`+${tags.length - 2}`, 'gray'));
+      body.appendChild(sub);
+
+      const actions = document.createElement('div');
+      actions.className = 'entry-actions';
+      if (state.activeHost && (entry.data.password || entry.data.username)) {
+        actions.append(actionBtn('fill', 'Fill on this page', () => fillCredentials(entry)));
+      }
+      actions.append(
+        actionBtn('user', 'Copy username', () =>
+          copyText(
+            entry.data.username || entry.data.ssoEmail,
+            entry.data.username ? 'Username copied' : 'SSO account email copied'
+          )
+        )
+      );
+      if (entry.data.password) {
+        actions.append(actionBtn('key', 'Copy password', () => copyText(entry.data.password, 'Password copied')));
+      }
+      if (entry.data.totp) {
+        actions.append(actionBtn('shield', 'Copy 2FA code', () => copyTotp(entry)));
+      }
+      if (entry.data.url) {
+        actions.append(actionBtn('external', 'Open tool link', () => openLink(entry.data.url)));
+      }
+      if (vaultWritable(entry.vault_id)) {
+        actions.append(actionBtn('pen', 'Edit', () => openEdit(entry.id)));
+      }
+      body.appendChild(actions);
+
+      if (mons.length) body.appendChild(creditBox(mons));
+      li.appendChild(body);
+    }
 
     list.appendChild(li);
   }
+
+  // Pager
+  const pager = $('pager');
+  pager.innerHTML = '';
+  pager.classList.toggle('hidden', pages <= 1);
+  if (pages > 1) {
+    const prev = document.createElement('button');
+    prev.className = 'btn small';
+    prev.textContent = 'Prev';
+    prev.disabled = state.page === 0;
+    prev.addEventListener('click', () => {
+      state.page--;
+      renderList();
+    });
+    const label = document.createElement('span');
+    label.className = 'muted';
+    label.textContent = `${state.page + 1} / ${pages}`;
+    const next = document.createElement('button');
+    next.className = 'btn small';
+    next.textContent = 'Next';
+    next.disabled = state.page >= pages - 1;
+    next.addEventListener('click', () => {
+      state.page++;
+      renderList();
+    });
+    pager.append(prev, label, next);
+  }
+
   updateLowBadge();
+}
+
+function makeBadge(text, variant) {
+  const b = document.createElement('span');
+  b.className = `badge${variant ? ` ${variant}` : ''}`;
+  b.textContent = text;
+  return b;
 }
 
 function actionBtn(iconName, titleText, onClick) {
@@ -738,9 +796,14 @@ async function copyTotp(entry) {
   keychain.resetAutoLock();
 }
 
-$('search').addEventListener('input', renderList);
-$('vault-filter').addEventListener('change', renderList);
-$('tag-filter').addEventListener('change', renderList);
+function resetAndRender() {
+  state.page = 0;
+  renderList();
+}
+
+$('search').addEventListener('input', resetAndRender);
+$('vault-filter').addEventListener('change', resetAndRender);
+$('tag-filter').addEventListener('change', resetAndRender);
 
 // Label filter options come from the labels present on visible entries.
 function populateTagFilter() {
@@ -905,6 +968,11 @@ async function openEdit(id, resume = null) {
 
   // Payments & top-ups
   $('f-payment-link').value = d?.paymentLink ?? entry?.data.paymentLink ?? '';
+  state.editPayReqs = (d?.paymentRequests ?? entry?.data.paymentRequests ?? []).map((r) => ({ ...r }));
+  $('pr-amount').value = '';
+  $('pr-currency').value = 'USD';
+  $('pr-note').value = '';
+  renderPayReqList();
   state.editTopups = (d?.topups ?? entry?.data.topups ?? []).map((t) => ({ ...t }));
   $('tu-date').value = new Date().toISOString().slice(0, 10);
   $('tu-amount').value = '';
@@ -1024,6 +1092,97 @@ function renderTopupList() {
     list.appendChild(row);
   }
 }
+
+// ---------- payment requests (pending top-ups for Alex & co) ----------
+
+function requestSummary(req, { title, link, login }) {
+  const lines = [
+    'OptiPass payment request',
+    `Tool: ${title}`,
+    `Amount: ${Number(req.amount).toLocaleString()} ${req.currency}`,
+  ];
+  if (link) lines.push(`Payment link: ${link.includes('://') ? link : `https://${link}`}`);
+  if (login) lines.push(`Login: ${login} (password & 2FA fill via OptiPass - right-click the login fields)`);
+  if (req.note) lines.push(`Note: ${req.note}`);
+  lines.push(`Requested by ${req.requestedBy} on ${req.date}`);
+  return lines.join('\n');
+}
+
+function renderPayReqList() {
+  const list = $('payreq-list');
+  list.innerHTML = '';
+  for (const req of state.editPayReqs) {
+    const row = document.createElement('div');
+    row.className = 'person';
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = `${Number(req.amount).toLocaleString()} ${req.currency} - pending`;
+    const small = document.createElement('small');
+    small.textContent = `${req.date} - ${req.requestedBy}${req.note ? ` - ${req.note}` : ''}`;
+    who.appendChild(small);
+    row.appendChild(who);
+    row.appendChild(
+      actionBtn('copy', 'Copy summary for WhatsApp', async () => {
+        await navigator.clipboard.writeText(
+          requestSummary(req, {
+            title: $('f-title').value.trim() || 'tool',
+            link: $('f-payment-link').value.trim() || $('f-url').value.trim(),
+            login: $('f-username').value.trim(),
+          })
+        );
+        toast('Summary copied');
+      })
+    );
+    row.appendChild(
+      actionBtn('check', 'Mark as paid (moves to payment history)', () => {
+        state.editTopups.push({
+          date: new Date().toISOString().slice(0, 10),
+          amount: req.amount,
+          currency: req.currency,
+          method: '',
+          frequency: 'topup',
+        });
+        state.editPayReqs = state.editPayReqs.filter((r) => r !== req);
+        renderPayReqList();
+        renderTopupList();
+        toast('Moved to payment history - press Save to store it');
+      })
+    );
+    row.appendChild(
+      actionBtn('trash', 'Cancel this request', () => {
+        state.editPayReqs = state.editPayReqs.filter((r) => r !== req);
+        renderPayReqList();
+      })
+    );
+    list.appendChild(row);
+  }
+}
+
+$('btn-payreq-add').addEventListener('click', async () => {
+  const amount = parseFloat($('pr-amount').value);
+  if (Number.isNaN(amount) || amount <= 0) return toast('Enter the amount to request');
+  const req = {
+    id: crypto.randomUUID(),
+    date: new Date().toISOString().slice(0, 10),
+    amount,
+    currency: ($('pr-currency').value.trim() || 'USD').toUpperCase(),
+    note: $('pr-note').value.trim(),
+    requestedBy: state.profile?.display_name || state.profile?.email || 'unknown',
+    status: 'pending',
+  };
+  state.editPayReqs.push(req);
+  $('pr-amount').value = '';
+  $('pr-note').value = '';
+  renderPayReqList();
+  await navigator.clipboard.writeText(
+    requestSummary(req, {
+      title: $('f-title').value.trim() || 'tool',
+      link: $('f-payment-link').value.trim() || $('f-url').value.trim(),
+      login: $('f-username').value.trim(),
+    })
+  );
+  toast('Request added & summary copied - press Save to store it');
+});
 
 $('btn-topup-add').addEventListener('click', () => {
   const amount = parseFloat($('tu-amount').value);
@@ -1157,6 +1316,7 @@ $('btn-save').addEventListener('click', async () => {
       .map((s) => ({ label: (s.label || '').trim(), value: s.value || '' }))
       .filter((s) => s.label || s.value),
     paymentLink: $('f-payment-link').value.trim(),
+    paymentRequests: state.editPayReqs,
     topups: state.editTopups,
     notes: $('f-notes').value.trim(),
     createdAt: existing?.data.createdAt || now,
@@ -1644,6 +1804,124 @@ $('btn-vault-delete').addEventListener('click', async (e) => {
 });
 
 $('btn-admin-back').addEventListener('click', () => showScreen('main'));
+
+// ---------- payment guide (the "Alex screen") ----------
+
+// The background worker watches for visits to payment pages of entries
+// with pending requests and opens the persistent window deep-linked to
+// this screen. It stays open until closed.
+let payGuideParam = new URLSearchParams(location.search).get('request');
+
+function openPayGuide(itemId) {
+  const entry = state.items.find((e) => e.id === itemId);
+  const req = entry && (entry.data.paymentRequests || []).find((r) => r.status === 'pending');
+  if (!entry || !req) {
+    toast('No pending payment request found');
+    return;
+  }
+  state.payGuideItemId = itemId;
+  const info = $('pg-info');
+  info.innerHTML = '';
+  const addLine = (label, value, strong) => {
+    const p = document.createElement('p');
+    if (label) {
+      const b = document.createElement('strong');
+      b.textContent = `${label}: `;
+      p.appendChild(b);
+    }
+    const span = document.createElement(strong ? 'strong' : 'span');
+    span.textContent = value;
+    p.appendChild(span);
+    info.appendChild(p);
+  };
+  addLine('Tool', entry.data.title || '(untitled)');
+  addLine('Amount', `${Number(req.amount).toLocaleString()} ${req.currency}`, true);
+  if (req.note) addLine('Note', req.note);
+  addLine('Requested by', `${req.requestedBy} on ${req.date}`);
+  const login = entry.data.username || entry.data.ssoEmail;
+  if (login) addLine('Login', login);
+  $('btn-pg-2fa').classList.toggle('hidden', !entry.data.totp);
+  $('btn-pg-pass').classList.toggle('hidden', !entry.data.password);
+  showScreen('payguide');
+}
+
+$('btn-pg-back').addEventListener('click', () => showScreen('main'));
+$('btn-pg-open').addEventListener('click', () => {
+  const entry = state.items.find((e) => e.id === state.payGuideItemId);
+  openLink(entry?.data.paymentLink || entry?.data.url);
+});
+$('btn-pg-user').addEventListener('click', () => {
+  const entry = state.items.find((e) => e.id === state.payGuideItemId);
+  copyText(entry?.data.username || entry?.data.ssoEmail, 'Login copied');
+});
+$('btn-pg-pass').addEventListener('click', () => {
+  const entry = state.items.find((e) => e.id === state.payGuideItemId);
+  copyText(entry?.data.password, 'Password copied');
+});
+$('btn-pg-2fa').addEventListener('click', () => {
+  const entry = state.items.find((e) => e.id === state.payGuideItemId);
+  if (entry) copyTotp(entry);
+});
+$('btn-pg-paid').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const entry = state.items.find((x) => x.id === state.payGuideItemId);
+  if (!entry) return;
+  const req = (entry.data.paymentRequests || []).find((r) => r.status === 'pending');
+  if (!req) return showScreen('main');
+  btn.disabled = true;
+  try {
+    const data = {
+      ...entry.data,
+      paymentRequests: (entry.data.paymentRequests || []).filter((r) => r !== req),
+      topups: [
+        ...(entry.data.topups || []),
+        {
+          date: new Date().toISOString().slice(0, 10),
+          amount: req.amount,
+          currency: req.currency,
+          method: '',
+          frequency: 'topup',
+        },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    const key = state.vaultKeys.get(entry.vault_id);
+    const { iv, ct } = await encryptJson(key, data);
+    await api.rest(`/items?id=eq.${entry.id}`, {
+      method: 'PATCH',
+      body: { vault_id: entry.vault_id, iv, enc_data: ct },
+    });
+    entry.data = data;
+    api.logEvent('payment.paid', { item_id: entry.id, amount: req.amount, currency: req.currency });
+    await updatePendingPayHosts();
+    renderList();
+    showScreen('main');
+    toast('Recorded in payment history');
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// Cache which hosts have pending payment requests so the background
+// worker can react to navigation without decrypting anything.
+async function updatePendingPayHosts() {
+  const map = {};
+  for (const e of state.items) {
+    if (!(e.data.paymentRequests || []).some((r) => r.status === 'pending')) continue;
+    const link = e.data.paymentLink || e.data.url;
+    if (!link) continue;
+    try {
+      const h = new URL(link.includes('://') ? link : `https://${link}`)
+        .hostname.replace(/^www\./, '');
+      map[h] = e.id;
+    } catch {
+      /* bad link */
+    }
+  }
+  await chrome.storage.session.set({ optipass_pending_payhosts: map });
+}
 
 // ---------- tool credit monitors ----------
 
@@ -2253,6 +2531,7 @@ async function launchPicker(pickIndex) {
       notes: $('f-notes').value,
       secrets: state.editSecrets,
       paymentLink: $('f-payment-link').value,
+      paymentRequests: state.editPayReqs,
       topups: state.editTopups,
       metrics: state.editMetrics,
       pickIndex,

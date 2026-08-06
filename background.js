@@ -172,9 +172,42 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.tabs.onActivated.addListener(rebuildFillMenu);
-chrome.tabs.onUpdated.addListener((tabId, info) => {
-  if (info.status === 'complete') rebuildFillMenu();
+chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
+  if (info.status === 'complete') {
+    rebuildFillMenu();
+    maybeOpenPayGuide(tab);
+  }
 });
+
+// When someone opens the payment page of a tool with a pending request,
+// open the persistent window as a step-by-step guide (once per request
+// per browser session). The host map is kept fresh by the popup.
+async function maybeOpenPayGuide(tab) {
+  try {
+    const url = tab?.url || '';
+    if (!/^https?:/.test(url)) return;
+    const { optipass_pending_payhosts: map = {}, optipass_payguide_shown: shown = [] } =
+      await chrome.storage.session.get(['optipass_pending_payhosts', 'optipass_payguide_shown']);
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    let itemId = null;
+    for (const [h, id] of Object.entries(map)) {
+      if (h === host || host.endsWith(`.${h}`) || h.endsWith(`.${host}`)) {
+        itemId = id;
+        break;
+      }
+    }
+    if (!itemId || shown.includes(itemId)) return;
+    await chrome.storage.session.set({ optipass_payguide_shown: [...shown, itemId] });
+    chrome.windows.create({
+      url: chrome.runtime.getURL(`popup/popup.html?window=1&request=${itemId}`),
+      type: 'popup',
+      width: 430,
+      height: 700,
+    });
+  } catch {
+    /* never break navigation */
+  }
+}
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes[SESSION_KEYS]) rebuildFillMenu();
 });
