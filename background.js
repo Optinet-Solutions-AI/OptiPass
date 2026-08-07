@@ -52,7 +52,13 @@ async function doRebuildFillMenu() {
     /* no accessible tab */
   }
   if (!host) {
-    chrome.contextMenus.create({ id: 'op-none', parentId: MENU_ROOT, title: 'No page detected', enabled: false, contexts: ['editable'] });
+    chrome.contextMenus.create({
+      id: 'op-none',
+      parentId: MENU_ROOT,
+      title: 'Open a website tab, then right-click again',
+      enabled: false,
+      contexts: ['editable'],
+    });
     return;
   }
   const matches = await matchesForHost(host);
@@ -178,6 +184,13 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
     maybeOpenPayGuide(tab);
   }
 });
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId !== chrome.windows.WINDOW_ID_NONE) rebuildFillMenu();
+});
+
+// The worker restarts often; keep the menu in sync with the active tab
+// on every wake (context menus persist, our entry cache does not).
+rebuildFillMenu();
 
 // When someone opens the payment page of a tool with a pending request,
 // open the persistent window as a step-by-step guide (once per request
