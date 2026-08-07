@@ -16,6 +16,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
   const [mvUser, setMvUser] = useState('');
   const [mvRole, setMvRole] = useState('editor');
   const [confirmVaultDelete, setConfirmVaultDelete] = useState(false);
+  const [deleteArm, setDeleteArm] = useState(null);
 
   const isSuper = profile?.role === 'super_admin';
   const managed = memberships.filter((m) => m.role === 'manager' && m.vaults.type === 'shared');
@@ -166,6 +167,26 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
                   )}
                   {p.status === 'disabled' && (
                     <button className="btn small" onClick={() => adminUpdate(p.id, null, 'active')}>Enable</button>
+                  )}
+                  {isSuper && (
+                    <button
+                      className="btn small danger"
+                      onClick={async () => {
+                        if (deleteArm !== p.id) return setDeleteArm(p.id);
+                        try {
+                          await api.rpc('admin_delete_user', { target_id: p.id });
+                          api.logEvent('user.delete', { target_id: p.id });
+                          setDeleteArm(null);
+                          await loadUsers();
+                          showToast('User deleted');
+                        } catch (err) {
+                          setDeleteArm(null);
+                          showToast(err.message);
+                        }
+                      }}
+                    >
+                      {deleteArm === p.id ? 'Confirm delete' : 'Delete'}
+                    </button>
                   )}
                 </>
               )}

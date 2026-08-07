@@ -271,7 +271,10 @@ async function submitLogin() {
     $('login-pw2').value = '';
     await boot();
   } catch (err) {
-    showError('login-error', err.message);
+    const msg = /database error/i.test(err.message)
+      ? 'An invite code is required to join - ask your admin for one.'
+      : err.message;
+    showError('login-error', msg);
   } finally {
     btn.disabled = false;
   }
@@ -1641,6 +1644,29 @@ async function loadAdminUsers() {
         }
       } else {
         row.appendChild(adminActionBtn('Enable', p.id, null, 'active'));
+      }
+      if (isSuper) {
+        const del = document.createElement('button');
+        del.className = 'btn small danger';
+        del.textContent = 'Delete';
+        del.addEventListener('click', async () => {
+          if (!del.dataset.confirming) {
+            del.dataset.confirming = '1';
+            del.textContent = 'Confirm delete';
+            return;
+          }
+          try {
+            await api.rpc('admin_delete_user', { target_id: p.id });
+            api.logEvent('user.delete', { target_id: p.id });
+            await loadAdminUsers();
+            toast('User deleted');
+          } catch (err) {
+            toast(err.message);
+            del.dataset.confirming = '';
+            del.textContent = 'Delete';
+          }
+        });
+        row.appendChild(del);
       }
     }
     box.appendChild(row);

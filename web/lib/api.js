@@ -47,6 +47,31 @@ async function authFetch(path, body, bearer) {
   return data;
 }
 
+// Supabase email links (confirmation, invites, recovery) land on the
+// Site URL with tokens in the hash. Adopt them as a session so the
+// user arrives signed in instead of on a blank page.
+export function adoptSessionFromUrlHash() {
+  if (typeof window === 'undefined') return false;
+  const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const access_token = h.get('access_token');
+  const refresh_token = h.get('refresh_token');
+  if (!access_token || !refresh_token) return false;
+  try {
+    const b64 = access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)));
+    writeStore({
+      access_token,
+      refresh_token,
+      expires_at: payload.exp || Math.floor(Date.now() / 1000) + 3600,
+      user: { id: payload.sub, email: payload.email },
+    });
+    window.history.replaceState(null, '', window.location.pathname);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function signUp(email, password, inviteCode) {
   const body = { email, password };
   if (inviteCode) body.data = { invite_code: inviteCode };

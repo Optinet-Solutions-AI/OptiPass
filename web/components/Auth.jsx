@@ -58,7 +58,11 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       setPw2('');
       await onBoot();
     } catch (err) {
-      setError(err.message);
+      setError(
+        /database error/i.test(err.message)
+          ? 'An invite code is required to join - ask your admin for one.'
+          : err.message
+      );
     } finally {
       setBusy(false);
     }
@@ -176,7 +180,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
         <>
           <label>Confirm account password</label>
           <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
-          <label>Invite code (if you received one)</label>
+          <label>Invite code (required to join)</label>
           <input type="text" value={invite} onChange={(e) => setInvite(e.target.value)} placeholder="e.g. 4f9a1c2b7d3e5a08" autoComplete="off" />
         </>
       )}

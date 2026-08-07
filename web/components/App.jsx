@@ -51,6 +51,8 @@ export default function App() {
     setSettings(s);
     applyTheme(s.theme);
 
+    api.adoptSessionFromUrlHash(); // email confirmation / recovery links
+
     const session = await api.getSession();
     if (!session) return setScreen('login');
     uidRef.current = session.user.id;
