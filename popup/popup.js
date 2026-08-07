@@ -242,7 +242,7 @@ function setLoginMode(mode) {
   $('btn-login-submit').textContent = signup ? 'Create account' : 'Sign in';
   $('login-toggle').textContent = signup ? 'Have an account? Sign in' : 'Need an account? Sign up';
   $('login-sub').textContent = signup
-    ? 'Create your team account. An admin must approve you unless you were invited.'
+    ? 'Sign up with the invite code your admin sent you.'
     : 'Sign in with your team account.';
   hideError('login-error');
 }

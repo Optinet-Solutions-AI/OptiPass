@@ -35,14 +35,17 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Signup links carry ?invite=CODE&email=... - prefill both so the
-  // new teammate only chooses a password.
+  const [fromLink, setFromLink] = useState(false);
+
+  // Signup links carry ?invite=CODE&email=... - prefill and lock both
+  // so the new teammate only chooses a password.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     if (p.get('invite')) {
       setMode('signup');
       setInvite(p.get('invite'));
       if (p.get('email')) setEmail(p.get('email'));
+      setFromLink(true);
     }
   }, []);
 
@@ -175,11 +178,39 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
     <div className="screen" style={{ maxWidth: 460 }}>
       <Brand
         title="OptiPass"
-        sub={signup ? 'Create your team account. An admin must approve you unless you have an invite code.' : 'Sign in with your team account.'}
+        sub={
+          signup
+            ? fromLink
+              ? "You're invited! Add your password to complete signup."
+              : 'Sign up with the invite code your admin sent you.'
+            : 'Sign in with your team account.'
+        }
       />
+      {signup && (
+        <>
+          <label>Invite code</label>
+          <input
+            type="text"
+            value={invite}
+            onChange={(e) => setInvite(e.target.value)}
+            placeholder="e.g. 4f9a1c2b7d3e5a08"
+            autoComplete="off"
+            readOnly={fromLink}
+            style={fromLink ? { opacity: 0.7 } : undefined}
+          />
+        </>
+      )}
       <label>Email</label>
-      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@optinetsolutions.com" autoComplete="username" />
-      <label>Account password</label>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@optinetsolutions.com"
+        autoComplete="username"
+        readOnly={signup && fromLink}
+        style={signup && fromLink ? { opacity: 0.7 } : undefined}
+      />
+      <label>{signup ? 'Create your password' : 'Account password'}</label>
       <input
         type="password"
         value={pw}
@@ -189,10 +220,8 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       />
       {signup && (
         <>
-          <label>Confirm account password</label>
+          <label>Confirm password</label>
           <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
-          <label>Invite code (required to join)</label>
-          <input type="text" value={invite} onChange={(e) => setInvite(e.target.value)} placeholder="e.g. 4f9a1c2b7d3e5a08" autoComplete="off" />
         </>
       )}
       {error && <div className={`error${ok ? ' ok' : ''}`}>{error}</div>}
