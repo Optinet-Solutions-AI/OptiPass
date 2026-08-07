@@ -18,13 +18,17 @@ Day to day you'll barely type either — a 6-digit PIN unlocks the extension.
 
 ## 1. Installing the extension
 
-1. Get the OptiPass folder — easiest with git:
-   ```
-   git clone https://github.com/Optinet-Solutions-AI/OptiPass.git
-   ```
+1. Get the OptiPass folder — either:
+   - **Zip:** [download it here](https://github.com/Optinet-Solutions-AI/OptiPass/archive/refs/heads/main.zip),
+     right-click → **Extract All…** ⚠️ Windows nests a folder inside a
+     folder — open them until you can see **`manifest.json`**; that inner
+     folder is the one you need.
+   - **Git (auto-updates):** `git clone https://github.com/Optinet-Solutions-AI/OptiPass.git`
 2. In Chrome open `chrome://extensions`
 3. Turn ON **Developer mode** (top-right toggle)
-4. Click **Load unpacked** and select the `OptiPass` folder
+4. Click **Load unpacked** and select the folder **that contains
+   `manifest.json`** (if Chrome says "Manifest file is missing", you picked
+   the outer wrapper — go one level deeper)
 5. Click the puzzle-piece 🧩 in the toolbar and **pin** OptiPass
 
 **Updates are automatic.** When a new version is pushed, run `git pull` in the

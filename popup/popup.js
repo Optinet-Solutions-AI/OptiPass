@@ -2688,23 +2688,33 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 // ---------- interactive tour ----------
+// Walks through every feature, moving between screens as it goes.
 
 const TOUR_STEPS = [
-  { el: 'search', title: 'Search', text: 'Find any login by name, username, or website.' },
-  { el: 'btn-add', title: 'Add entries', text: 'Save logins - with 2FA codes, API keys, and credit monitors attached to them.' },
-  { el: 'tag-filter', title: 'Tags group your tools', text: 'Tag tools by project and filter here. Sharing works through "Who has access" on each tool - Personal stays private, even from admins.' },
-  { el: 'entry-list', title: 'Your vault', text: 'Fill a login on the current site (⬇), or copy the username, password, or 2FA code. Credit readings appear in a box under their tool and turn red when LOW.' },
-  { el: 'btn-theme', title: 'Theme', text: 'Light or dark - your choice follows you to every device.' },
-  { el: 'btn-lock', title: 'Lock', text: 'Locks the vault. Unlock with your 6-digit PIN or master password.' },
-  { el: 'btn-settings', title: 'Settings & help', text: 'PIN, auto-lock, updates, alerts, help, and this tour live here.' },
+  { screen: 'main', el: 'search', title: 'Search', text: 'The fastest way to any tool - matches names, usernames, links, and tags.' },
+  { screen: 'main', el: 'entry-list', title: 'Your tools', text: 'Click a row to expand it: fill the login on the current site, copy the username, password, or live 2FA code, open the tool, or edit it. Credit readings appear underneath and turn red when LOW. Tip: on any login page, right-click a field and pick "OptiPass - fill login".' },
+  { screen: 'main', el: 'tag-filter', title: 'Tags', text: 'Tag tools by project in the editor, then filter them here.', skip: () => $('tag-filter').classList.contains('hidden') },
+  { screen: 'main', el: 'btn-window', title: 'Open in a window', text: 'Runs OptiPass in its own window that stays open while you browse - used for long edits, on-page picking, and payment guides.' },
+  { screen: 'main', el: 'btn-add', title: 'Add a tool', text: 'Start with the basics; after saving you can add everything else. Let\'s look inside the editor...' },
+  { screen: 'edit', el: 'acc-basic', title: 'Basic information', text: 'Name, link, who has access (Private stays private - even from admins), and the sign-in method, including OAuth tools linked to the Google/GitHub account they use.' },
+  { screen: 'edit', el: 'acc-mfa', title: 'MFA - one-time passwords', text: 'Paste a site\'s 2FA setup key and OptiPass replaces Google Authenticator: live rotating codes, and Fill copies the current one automatically.' },
+  { screen: 'edit', el: 'acc-secrets', title: 'API keys & secrets', text: 'Any number of labeled secrets per tool - public keys, private keys, staging - each encrypted, each with a copy button.' },
+  { screen: 'edit', el: 'acc-monitors', title: 'Credit & usage monitors', text: 'Track credits, bandwidth, RAM - anything with a number - read from the tool\'s API or picked off its dashboard. Below your threshold it turns red and badges the OptiPass icon.' },
+  { screen: 'edit', el: 'acc-payments', title: 'Payments & top-ups', text: 'Keep the payment link, record every top-up, and request payments: the payer gets a guide window with everything needed, and marking it paid files the history automatically.' },
+  { screen: 'settings', el: 'sec-pin', title: 'Quick unlock PIN', text: 'Daily unlocking is just 6 digits. Five wrong tries removes the PIN and asks for your master password (changeable here too).' },
+  { screen: 'settings', el: 'sec-updates', title: 'Updates', text: 'OptiPass updates itself. If your version falls behind, the toolbar icon shows a NEW badge and this section tells you what to do.' },
+  { screen: 'main', el: 'btn-admin', title: 'Team administration', text: 'Invite teammates with one-click signup links, manage roles, create team vaults, and add members.', skip: () => $('btn-admin').classList.contains('hidden') },
+  { screen: 'main', el: 'btn-lock', title: 'Lock', text: 'Locks the vault (it also auto-locks after idle). That\'s the tour - the written manual lives in Settings > Help.' },
 ];
 
 let tourStep = 0;
 let tourEls = null;
+let tourScreenShown = null;
 
 function startTour() {
-  endTour();
+  endTourOverlay();
   tourStep = 0;
+  tourScreenShown = null;
   const overlay = document.createElement('div');
   overlay.id = 'tour-overlay';
   const spot = document.createElement('div');
@@ -2714,18 +2724,51 @@ function startTour() {
   overlay.append(spot, card);
   document.body.appendChild(overlay);
   tourEls = { overlay, spot, card };
-  renderTourStep();
+  renderTourStep(1);
 }
 
-function endTour() {
+function endTourOverlay() {
   if (tourEls) tourEls.overlay.remove();
   tourEls = null;
 }
 
-function renderTourStep() {
+function endTour() {
+  endTourOverlay();
+  showScreen('main');
+}
+
+async function applyTourScreen(step) {
+  if (tourScreenShown === step.screen) return;
+  tourScreenShown = step.screen;
+  if (step.screen === 'edit') {
+    await openEdit(null);
+    $('edit-more').classList.remove('hidden'); // show the sections for the tour
+  } else if (step.screen === 'settings') {
+    await loadSettingsScreen();
+    showScreen('settings');
+  } else {
+    showScreen('main');
+  }
+}
+
+async function renderTourStep(dir = 1) {
   if (!tourEls) return;
+  while (TOUR_STEPS[tourStep] && TOUR_STEPS[tourStep].skip && TOUR_STEPS[tourStep].skip()) {
+    tourStep += dir;
+  }
+  if (tourStep < 0) tourStep = 0;
+  if (tourStep >= TOUR_STEPS.length) return endTour();
   const step = TOUR_STEPS[tourStep];
+  await applyTourScreen(step);
+  if (!tourEls) return; // closed while navigating
+
   const target = $(step.el);
+  if (target && target.tagName === 'DETAILS') {
+    document.querySelectorAll('#screen-edit details.acc').forEach((d) => (d.open = d === target));
+  }
+  if (target) target.scrollIntoView({ block: 'center' });
+  await new Promise((r) => requestAnimationFrame(r));
+
   let r = target ? target.getBoundingClientRect() : null;
   if (!r || (!r.width && !r.height)) {
     r = { left: 20, top: 90, width: window.innerWidth - 40, height: 60 };
@@ -2762,7 +2805,7 @@ function renderTourStep() {
   back.disabled = tourStep === 0;
   back.addEventListener('click', () => {
     tourStep--;
-    renderTourStep();
+    renderTourStep(-1);
   });
   const next = document.createElement('button');
   next.className = 'btn small primary';
@@ -2770,7 +2813,7 @@ function renderTourStep() {
   next.addEventListener('click', () => {
     if (tourStep === TOUR_STEPS.length - 1) return endTour();
     tourStep++;
-    renderTourStep();
+    renderTourStep(1);
   });
   nav.append(count, skip, back, next);
   card.append(h, p, nav);

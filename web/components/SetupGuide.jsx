@@ -36,8 +36,14 @@ export default function SetupGuide({ onContinue }) {
         <p className="muted">
           Find <strong>OptiPass-main.zip</strong> in your Downloads, right-click it →{' '}
           <strong>Extract All…</strong> and extract it somewhere permanent, e.g.{' '}
-          <code>Documents\OptiPass</code>. The extension runs from this folder, so don&apos;t
-          delete or move it afterwards.
+          <code>Documents</code>. The extension runs from this folder, so don&apos;t delete or
+          move it afterwards.
+        </p>
+        <p className="muted" style={{ marginTop: 8 }}>
+          ⚠️ <strong>Windows puts a folder inside a folder</strong>: extracting usually creates{' '}
+          <code>OptiPass-main\OptiPass-main\…</code>. Open the folders until you can see the file{' '}
+          <strong><code>manifest.json</code></strong> — <em>that</em> folder is the one you&apos;ll
+          select in the next step.
         </p>
       </section>
 
@@ -51,8 +57,13 @@ export default function SetupGuide({ onContinue }) {
           <li>Turn ON <strong>Developer mode</strong> — the toggle in the top-right corner</li>
           <li>Click <strong>Load unpacked</strong> (top-left)</li>
           <li>
-            Select the extracted folder — the one named <strong>OptiPass-main</strong> that
-            contains <code>manifest.json</code>
+            Navigate <em>into</em> the extracted folders until you&apos;re inside the one showing{' '}
+            <code>manifest.json</code>, <code>popup</code>, <code>icons</code>… and click{' '}
+            <strong>Select Folder</strong>
+          </li>
+          <li>
+            If Chrome says <em>&quot;Manifest file is missing&quot;</em>, you selected the outer
+            wrapper folder — go one level deeper and try again
           </li>
         </ol>
       </section>
