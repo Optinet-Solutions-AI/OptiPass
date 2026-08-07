@@ -226,7 +226,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
         <div className="stack">
           {mvMembers.map((mem) => (
             <div className="person" key={mem.user_id}>
-              <div className="who">{mem.profiles?.display_name || mem.profiles?.email || mem.user_id} ({mem.role})</div>
+              <div className="who">{mem.profiles?.display_name || mem.profiles?.email || mem.user_id} ({mem.role === 'manager' ? 'admin' : mem.role})</div>
               {mem.user_id !== uid && (
                 <button
                   className="btn small"
@@ -252,7 +252,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
           <select value={mvRole} onChange={(e) => setMvRole(e.target.value)}>
             <option value="editor">Editor</option>
             <option value="viewer">Viewer</option>
-            <option value="manager">Manager</option>
+            <option value="manager">Admin</option>
           </select>
           <button className="btn" onClick={addMember}>Add</button>
         </div>
