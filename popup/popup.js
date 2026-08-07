@@ -2,6 +2,7 @@ import {
   decryptJson,
   encryptJson,
   exportKeyB64,
+  generatePassphrase,
   generatePassword,
   generateTotp,
   generateVaultKey,
@@ -116,7 +117,7 @@ const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-se
 function showScreen(name) {
   $('splash').classList.add('hidden');
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
-  const focus = { login: 'login-email', 'master-setup': 'ms-pw', 'pin-setup': 'ps-pin', main: 'search' }[name];
+  const focus = { login: 'login-email', 'pin-setup': 'ps-pin', main: 'search' }[name];
   if (focus) setTimeout(() => $(focus).focus(), 50);
 }
 
@@ -213,7 +214,7 @@ async function boot() {
 
   const [keyRecord] = await api.rest(`/user_keys?user_id=eq.${state.uid}&select=*`);
   state.keyRecord = keyRecord || null;
-  if (!keyRecord || !profile.public_key) return showScreen('master-setup');
+  if (!keyRecord || !profile.public_key) return showMasterSetup();
 
   const unlocked = await keychain.getUnlocked();
   if (!unlocked) return showUnlockScreen();
@@ -310,42 +311,61 @@ async function doSignOut() {
 
 // ---------- master password setup ----------
 
-$('ms-pw').addEventListener('input', () => {
-  const pw = $('ms-pw').value;
-  let score = 0;
-  if (pw.length >= 10) score++;
-  if (pw.length >= 14) score++;
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
-  if (/\d/.test(pw)) score++;
-  if (/[^a-zA-Z0-9]/.test(pw)) score++;
-  const colors = ['#b4544a', '#b4544a', '#c9a227', '#c9a227', '#6b8f71', '#6b8f71'];
-  $('ms-strength').innerHTML = `<div style="width:${(score / 5) * 100}%;background:${colors[score]}"></div>`;
+let generatedMaster = null;
+
+function showMasterSetup() {
+  generatedMaster = generatePassphrase();
+  $('ms-generated').textContent = generatedMaster;
+  $('ms-saved').checked = false;
+  $('btn-ms-create').disabled = true;
+  hideError('ms-error');
+  showScreen('master-setup');
+}
+
+$('btn-ms-regen').addEventListener('click', () => {
+  generatedMaster = generatePassphrase();
+  $('ms-generated').textContent = generatedMaster;
+  $('ms-saved').checked = false;
+  $('btn-ms-create').disabled = true;
+});
+
+$('btn-ms-copy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(generatedMaster);
+  toast('Master password copied - store it somewhere safe');
+});
+
+$('ms-saved').addEventListener('change', (e) => {
+  $('btn-ms-create').disabled = !e.target.checked;
 });
 
 $('btn-ms-create').addEventListener('click', async () => {
-  const pw = $('ms-pw').value;
   hideError('ms-error');
-  if (pw.length < 10) return showError('ms-error', 'Master password must be at least 10 characters.');
-  if (pw !== $('ms-pw2').value) return showError('ms-error', 'Passwords do not match.');
-
   const btn = $('btn-ms-create');
   btn.disabled = true;
   btn.textContent = 'Setting up encryption...';
   try {
-    const { publicJwk, privateJwk, keyRecord } = await keychain.createUserKeys(pw);
+    const { publicJwk, privateJwk, keyRecord } = await keychain.createUserKeys(generatedMaster);
     await api.rest(`/profiles?id=eq.${state.uid}`, { method: 'PATCH', body: { public_key: publicJwk } });
     await api.rest('/user_keys', { method: 'POST', body: { user_id: state.uid, ...keyRecord } });
     state.profile.public_key = publicJwk;
     state.keyRecord = keyRecord;
     await keychain.setUnlocked(privateJwk);
     api.logEvent('keys.setup');
+    // Go straight to the daily-driver PIN.
+    if (!(await keychain.hasPin()) && !state.settings.pinOffered) {
+      $('ps-pin').value = '';
+      $('ps-pin2').value = '';
+      hideError('ps-error');
+      showScreen('pin-setup');
+      return;
+    }
     await enterMain();
     toast('Vault ready');
   } catch (err) {
     showError('ms-error', err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Set master password';
+    btn.textContent = 'Continue';
   }
 });
 

@@ -63,20 +63,24 @@
     <button id="btn-pending-signout" class="btn link full">Sign out</button>
   </div>
 
-  <!-- First unlock: create master password -->
+  <!-- First unlock: auto-generated master password -->
   <div id="screen-master-setup" class="screen hidden">
     <div class="brand">
       <div class="brand-logo">O</div>
-      <h1>Create your master password</h1>
-      <p class="muted">This encrypts everything and never leaves your device &mdash; not even our server can read your vault. <strong>It cannot be recovered if forgotten.</strong></p>
+      <h1>Your master password</h1>
+      <p class="muted">We generated it for you. It encrypts everything and never leaves your device &mdash; not even our server can read your vault.</p>
     </div>
-    <label for="ms-pw">Master password</label>
-    <input type="password" id="ms-pw" autocomplete="new-password" placeholder="At least 10 characters" />
-    <div id="ms-strength" class="strength"></div>
-    <label for="ms-pw2">Confirm master password</label>
-    <input type="password" id="ms-pw2" autocomplete="new-password" />
+    <div class="notice">
+      <div id="ms-generated" class="ms-pass"></div>
+      <div class="row">
+        <button id="btn-ms-copy" class="btn grow">Copy</button>
+        <button id="btn-ms-regen" class="btn icon" title="Generate another"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.64A9 9 0 0 0 20.49 15"/></svg></button>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:12px"><strong>Save it somewhere safe right now</strong> (notes app, written down). You'll need it to unlock OptiPass on any other device or Chrome profile, and <strong>it can never be recovered</strong>. Day to day you'll use a 6-digit PIN instead &mdash; and you can change this password anytime in Settings.</p>
+    <label class="checkbox" style="margin-top:12px"><input type="checkbox" id="ms-saved" /> I saved my master password somewhere safe</label>
     <div id="ms-error" class="error hidden"></div>
-    <button id="btn-ms-create" class="btn primary full">Set master password</button>
+    <button id="btn-ms-create" class="btn primary full" disabled>Continue</button>
   </div>
 
   <!-- Unlock -->

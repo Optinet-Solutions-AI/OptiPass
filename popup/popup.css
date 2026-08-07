@@ -789,6 +789,16 @@ textarea {
   margin-top: 0;
 }
 
+/* Generated master password display */
+.ms-pass {
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: center;
+  word-break: break-all;
+  padding: 4px 0 12px;
+  user-select: all;
+}
+
 /* Quick-unlock PIN entry */
 .pin-input {
   text-align: center;

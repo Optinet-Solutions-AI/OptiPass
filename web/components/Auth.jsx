@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import * as api from '@/lib/api';
+import { generatePassphrase } from '@/lib/crypto';
 
 function Brand({ title, sub }) {
   return (
@@ -82,13 +83,21 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
     }
   }
 
+  const [generated, setGenerated] = useState('');
+  const [savedIt, setSavedIt] = useState(false);
+
+  useEffect(() => {
+    if (screen === 'master-setup') {
+      setGenerated(generatePassphrase());
+      setSavedIt(false);
+    }
+  }, [screen]);
+
   async function submitMaster() {
     setError(null);
-    if (pw.length < 10) return setError('Master password must be at least 10 characters.');
-    if (pw !== pw2) return setError('Passwords do not match.');
     setBusy(true);
     try {
-      await onMasterSetup(pw);
+      await onMasterSetup(generated);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -128,23 +137,47 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
   }
 
   if (screen === 'master-setup') {
-    const score = strengthOf(pw);
     return (
       <div className="screen" style={{ maxWidth: 460 }}>
         <Brand
-          title="Create your master password"
-          sub="This encrypts everything and never leaves your device - not even our server can read your vault. It cannot be recovered if forgotten."
+          title="Your master password"
+          sub="We generated it for you. It encrypts everything and never leaves your device - not even our server can read your vault."
         />
-        <label>Master password</label>
-        <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 10 characters" autoComplete="new-password" />
-        <div className="strength">
-          <div style={{ width: `${(score / 5) * 100}%`, background: STRENGTH_COLORS[score] }} />
+        <div className="notice">
+          <div className="ms-pass">{generated}</div>
+          <div className="row">
+            <button
+              className="btn grow"
+              onClick={async () => {
+                await navigator.clipboard.writeText(generated);
+              }}
+            >
+              Copy
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                setGenerated(generatePassphrase());
+                setSavedIt(false);
+              }}
+            >
+              Generate another
+            </button>
+          </div>
         </div>
-        <label>Confirm master password</label>
-        <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+        <p className="muted" style={{ marginTop: 12 }}>
+          <strong>Save it somewhere safe right now.</strong> You&apos;ll need it to unlock OptiPass
+          on any other device or Chrome profile, and <strong>it can never be recovered</strong>.
+          Day to day the extension uses a 6-digit PIN instead - and you can change this password
+          anytime in Settings.
+        </p>
+        <label className="checkbox" style={{ marginTop: 12 }}>
+          <input type="checkbox" checked={savedIt} onChange={(e) => setSavedIt(e.target.checked)} /> I
+          saved my master password somewhere safe
+        </label>
         {error && <div className="error">{error}</div>}
-        <button className="btn primary full" disabled={busy} onClick={submitMaster}>
-          {busy ? 'Setting up encryption...' : 'Set master password'}
+        <button className="btn primary full" disabled={busy || !savedIt} onClick={submitMaster}>
+          {busy ? 'Setting up encryption...' : 'Continue'}
         </button>
       </div>
     );

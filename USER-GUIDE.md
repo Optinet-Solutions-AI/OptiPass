@@ -43,8 +43,10 @@ You need an **invite code** from an admin — signups without one are rejected.
 1. Click the OptiPass icon → **Need an account? Sign up**
 2. Enter your **email**, choose an **account password** (8+ characters), and
    paste your **invite code**
-3. Create your **master password** (10+ characters). Read the warning twice:
-   it cannot be recovered. Store it somewhere safe outside OptiPass.
+3. OptiPass **generates your master password** for you (a 5-word passphrase
+   like `coral-window-lemon-storm-pine-42`). **Copy it and save it somewhere
+   safe right now** — you'll need it on any new device or Chrome profile,
+   and it can never be recovered. You can change it later in Settings.
 4. You're in. Your private **Personal** vault is created automatically.
 5. OptiPass offers a **6-digit PIN** for this browser — take it. It's how
    you'll unlock every day.

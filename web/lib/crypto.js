@@ -209,6 +209,32 @@ function randInt(max) {
   return b[0] % max;
 }
 
+// Simple, common words for generated master passphrases - easy to
+// write down and to retype on a new device. 5 words + 2 digits from a
+// 240-word list is ~46 bits, plenty behind 600k-iteration PBKDF2.
+const PASSPHRASE_WORDS = ('acorn amber anchor apple arrow aspen atlas autumn badge bagel bamboo barley basil beacon berry ' +
+  'birch bison blaze bloom bluff bolt bonus book breeze brick bridge brook bubble butter cabin cactus ' +
+  'camel candle canoe canyon carbon cargo castle cedar chalk cherry chess cider cliff cloud clover ' +
+  'cobalt cocoa comet copper coral cotton cove crane crater creek crest crystal cypress daisy dawn ' +
+  'delta denim desert diamond dome dove dragon drift dune eagle echo ember engine falcon feather fern ' +
+  'field flame flint forest fossil fox frost galaxy garden garnet gecko ginger glacier glade globe ' +
+  'gold goose granite grape grove hail harbor hawk hazel heron hill honey iceberg iris island ivory ' +
+  'ivy jade jasper jungle juniper kayak kelp kettle kite koala lagoon lake lantern laurel lava leaf ' +
+  'ledge lemon lily linen lion lotus lunar lynx magnet mango maple marble meadow mesa meteor mint ' +
+  'mirror mist moon moss mountain nectar nest north nova nutmeg oak oasis ocean olive onyx opal ' +
+  'orbit orchid osprey otter owl oyster palm panda pearl pebble pecan penguin pepper petal pine ' +
+  'pixel planet plum polar pond poppy prairie prism pumpkin quail quartz quill rain raven reef ridge ' +
+  'river robin rocket rose ruby saddle sage salmon sand sapphire scout seal shadow shell shore silver ' +
+  'sky slate snow solar sparrow spice spring spruce star stone storm summit swan thunder tiger timber ' +
+  'topaz torch trail tulip tundra turtle valley velvet vine violet walnut wave whale wheat willow ' +
+  'wind winter wolf wren zebra zephyr zinc').split(' ');
+
+export function generatePassphrase(words = 5) {
+  const parts = Array.from({ length: words }, () => PASSPHRASE_WORDS[randInt(PASSPHRASE_WORDS.length)]);
+  parts.push(String(randInt(100)).padStart(2, '0'));
+  return parts.join('-');
+}
+
 // Ambiguous characters (I, l, 1, O, 0) are excluded on purpose.
 export function generatePassword(length = 20, { symbols = true } = {}) {
   const sets = [
