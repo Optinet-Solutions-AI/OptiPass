@@ -120,7 +120,14 @@ Tags section to group tools by project. They become badges and a filter.
 
 ## 6. Editing a tool — the sections
 
-Open a tool → ✎. Everything is in collapsible sections:
+**Step by step:**
+1. Find the tool (search is fastest) and click its row to expand it
+2. Click the **✎ pencil** button
+3. Every part of the tool is a collapsible section — click a section header
+   to open it, make your changes
+4. Click **Save** (the save bar sticks to the bottom, always reachable)
+
+The sections:
 
 ### MFA — one-time passwords
 Replace Google Authenticator: when a site offers authenticator-app 2FA, choose
@@ -163,7 +170,22 @@ red badge appears on the OptiPass toolbar icon.
 Anything else — recovery codes, quirks, who owns the account.
 
 ### Deleting a tool
-Bottom of the editor → **Delete tool** → click again to confirm.
+1. Open the tool → ✎ edit
+2. Scroll to the bottom → **Delete tool**
+3. The button changes to **Confirm delete** — click it again
+4. The tool, its monitors, and its payment records are gone for everyone
+   in that vault (this cannot be undone)
+
+### Moving a tool to another vault (e.g. Personal → AI Automation Team)
+1. Open the tool → ✎ edit
+2. In **Basic information**, change **Who has access** to the target team
+3. **Save** — the tool is re-encrypted under the team's key and everyone in
+   that team can now see it
+
+> **Only the tool's creator can move it.** If you didn't create the tool,
+> the "Who has access" selector is locked — and the database itself refuses
+> the move even if someone tries to force it. To move many tools at once,
+> use **Settings → Bulk move tools** (it moves only the tools you created).
 
 ---
 
@@ -178,7 +200,8 @@ Bottom of the editor → **Delete tool** → click again to confirm.
 - Sharing *part* of a tool (e.g. just an API key): make a second entry with
   only that key in a vault the right people are in.
 - **Move tools between vaults**: edit the tool and change "Who has access",
-  or move many at once via **Settings → Bulk move tools**.
+  or move many at once via **Settings → Bulk move tools**. **Only a tool's
+  creator can move it** — enforced by the database.
 - Removing someone from a vault stops their access instantly — but rotate any
   passwords they already saw (true of every password manager).
 
@@ -186,14 +209,45 @@ Bottom of the editor → **Delete tool** → click again to confirm.
 
 ## 8. Admin guide (admins & super admin)
 
-Open **Admin** (👥 icon):
-- **Members**: disable/enable accounts; the super admin can promote/demote
-  admins and **Delete** accounts entirely (confirm step).
-- **Invite by email**: creates an **invite code** (auto-copied) — send it to
-  the new teammate; they sign up with it and are active immediately. No code,
-  no signup.
-- **Shared vaults**: create team vaults; under **Vault members** add people
-  with a role. Only a vault's Admin can add members (they hold the key).
+Open **Admin** (the 👥 icon on the main screen — visible to admins only).
+
+### Creating a team (step by step)
+1. Admin → **Shared vaults** → type the team name (e.g. `AI Automation Team`)
+2. Click **Create** — you become the vault's Admin automatically
+3. Under **Vault members**, make sure the new vault is selected
+4. Pick a teammate in the **Add member...** dropdown
+5. Choose their role — **Admin** (manage members), **Editor** (add/edit
+   tools), or **Viewer** (see and copy only)
+6. Click **Add** — they instantly see everything in that vault
+
+> Only a vault's Admin can add members — adding someone means encrypting the
+> vault key for them, and only members hold that key. A person must have
+> signed up (and set their master password) before they can be added.
+
+### Inviting a new teammate (step by step)
+1. Admin → **Invite by email** → enter their email and global role
+2. Click **Invite** — the **invite code is copied to your clipboard**
+3. Send them the code (plus the repo link and this guide)
+4. They install OptiPass, sign up with the code, and are active immediately
+5. Add them to the team vaults they need (steps above)
+
+Signups **without a valid invite code are rejected** — there is no way in
+without one.
+
+### Managing people
+- **Disable** cuts someone's server access instantly (re-enable anytime)
+- The **super admin** can additionally promote/demote admins and **Delete**
+  accounts entirely (click Delete, then Confirm delete)
+- When someone leaves: disable or delete them, remove them from vaults, and
+  rotate any passwords they had seen
+
+### The audit trail
+Every meaningful change is recorded **by the database itself** — clients
+can't skip it: who created/edited/**moved**/deleted which tool (and between
+which vaults), who added/removed vault members or changed roles, vault
+creation/deletion, signups, role/status changes, and invites. Item contents
+stay encrypted — the log holds ids and metadata, never secrets. Admins can
+inspect it in Supabase (`audit_log` table) to retrace who changed what, when.
 
 ---
 
@@ -222,7 +276,42 @@ fill, the element picker, the PIN, and the toolbar badge.
 
 ---
 
-## 11. Troubleshooting
+## 11. How your data is secured (and why admins can't read your Personal vault)
+
+Plain-language version of the cryptography — the same building blocks used
+by 1Password and Bitwarden:
+
+1. **Your master password never leaves your device.** It is run through
+   **PBKDF2-SHA256 with 600,000 iterations** (the OWASP-recommended
+   strength) to derive a key — and only that derived key, never the
+   password, is used for anything.
+2. **That key unlocks your personal RSA keypair.** Everyone has one; the
+   private half is stored encrypted under your master password.
+3. **Every vault has its own AES-256 key.** Your tools are sealed with
+   **AES-256-GCM** — authenticated 256-bit encryption with a fresh random
+   nonce on every save. This is the cipher; there are no known practical
+   attacks against it.
+4. **Sharing = wrapping keys, not copying secrets.** When you're added to a
+   team vault, its AES key is encrypted ("wrapped") with *your* RSA public
+   key — one wrapped copy per member. Only your private key (which only your
+   master password unlocks) can unwrap it.
+5. **Why admins can't read your Personal vault:** its key is wrapped for
+   exactly one person — you. An admin, the database owner, even someone who
+   stole the entire server database, holds only ciphertext and wrapped keys
+   they cannot unwrap. This isn't a permission that could be toggled; it's
+   mathematics.
+6. **The server is locked down anyway**: row-level security means the API
+   only serves you rows you're entitled to, signups are invite-only, and the
+   append-only **audit trail** is written by database triggers.
+7. **The honest limits:** a weak master password is the one thing that can
+   undermine all of the above (use 12+ characters), and a compromised device
+   (malware, keyloggers) can read what you can read. OptiPass protects the
+   server side completely and the device side as well as any password
+   manager can.
+
+---
+
+## 12. Troubleshooting
 
 - **Forgot your PIN** → "Use master password instead" (5 wrong tries resets
   the PIN automatically).

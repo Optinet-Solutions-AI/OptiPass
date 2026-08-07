@@ -9,6 +9,7 @@ export default function Editor({
   entryMonitors,
   memberships,
   items,
+  uid,
   decryptApiConfig,
   fetchApiValue,
   showToast,
@@ -171,7 +172,16 @@ export default function Editor({
       </header>
 
       <label>Who has access</label>
-      <select value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
+      <select
+        value={vaultId}
+        onChange={(e) => setVaultId(e.target.value)}
+        disabled={!!entry && !!entry.created_by && entry.created_by !== uid}
+        title={
+          entry && entry.created_by && entry.created_by !== uid
+            ? "Only the tool's creator can move it to another vault"
+            : undefined
+        }
+      >
         {writableVaults.map((m) => (
           <option key={m.vault_id} value={m.vault_id}>
             {m.vaults.type === 'personal' ? 'Private (only me)' : `Team: ${m.vaults.name}`}

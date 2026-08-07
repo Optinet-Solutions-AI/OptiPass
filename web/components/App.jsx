@@ -159,13 +159,18 @@ export default function App() {
   }
 
   async function fetchItems(map) {
-    const rows = await api.rest('/items?select=id,vault_id,iv,enc_data&order=updated_at.desc');
+    const rows = await api.rest('/items?select=id,vault_id,created_by,iv,enc_data&order=updated_at.desc');
     const out = [];
     for (const row of rows) {
       const key = map.get(row.vault_id);
       if (!key) continue;
       try {
-        out.push({ id: row.id, vault_id: row.vault_id, data: await decryptJson(key, row.iv, row.enc_data) });
+        out.push({
+          id: row.id,
+          vault_id: row.vault_id,
+          created_by: row.created_by,
+          data: await decryptJson(key, row.iv, row.enc_data),
+        });
       } catch {
         /* skip undecryptable */
       }
@@ -387,7 +392,7 @@ export default function App() {
         prefer: 'return=representation',
       });
       itemId = row.id;
-      setItems((cur) => [...cur, { id: row.id, vault_id: vaultId, data }]);
+      setItems((cur) => [...cur, { id: row.id, vault_id: vaultId, created_by: uidRef.current, data }]);
       api.logEvent('item.create', { item_id: itemId, vault_id: vaultId });
     }
 

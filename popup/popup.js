@@ -502,13 +502,18 @@ async function ensureVaultKeys() {
 }
 
 async function fetchItems() {
-  const rows = await api.rest('/items?select=id,vault_id,iv,enc_data&order=updated_at.desc');
+  const rows = await api.rest('/items?select=id,vault_id,created_by,iv,enc_data&order=updated_at.desc');
   const items = [];
   for (const row of rows) {
     const key = state.vaultKeys.get(row.vault_id);
     if (!key) continue;
     try {
-      items.push({ id: row.id, vault_id: row.vault_id, data: await decryptJson(key, row.iv, row.enc_data) });
+      items.push({
+        id: row.id,
+        vault_id: row.vault_id,
+        created_by: row.created_by,
+        data: await decryptJson(key, row.iv, row.enc_data),
+      });
     } catch {
       // Skip anything we cannot decrypt rather than break the list.
     }
@@ -945,6 +950,12 @@ async function openEdit(id, resume = null) {
     if (filter !== 'all' && vaultWritable(filter)) fv.value = filter;
   }
 
+  // Only the tool's creator may move it to another vault (also
+  // enforced by a database trigger).
+  const canMove = !entry || !entry.created_by || entry.created_by === state.uid;
+  fv.disabled = !canMove;
+  fv.title = canMove ? '' : "Only the tool's creator can move it to another vault";
+
   $('f-title').value = d?.title ?? entry?.data.title ?? '';
   $('f-url').value = d?.url ?? entry?.data.url ?? (entry ? '' : state.activeHost || '');
   $('f-tags').value = d?.tags ?? (entry?.data.tags || []).join(', ');
@@ -1346,7 +1357,7 @@ $('btn-save').addEventListener('click', async () => {
         body: { vault_id: vaultId, iv, enc_data: ct },
         prefer: 'return=representation',
       });
-      state.items.push({ id: row.id, vault_id: vaultId, data });
+      state.items.push({ id: row.id, vault_id: vaultId, created_by: state.uid, data });
       itemId = row.id;
       api.logEvent('item.create', { item_id: itemId, vault_id: vaultId });
     }
@@ -1465,8 +1476,12 @@ $('btn-bulk-move').addEventListener('click', async (e) => {
   if (!from || !to || from === to) return toast('Pick two different vaults');
   const targetKey = state.vaultKeys.get(to);
   if (!targetKey) return toast('No key available for the target vault');
-  const movers = state.items.filter((i) => i.vault_id === from);
-  if (!movers.length) return toast('The source vault has no tools');
+  const inVault = state.items.filter((i) => i.vault_id === from);
+  const movers = inVault.filter((i) => !i.created_by || i.created_by === state.uid);
+  const skipped = inVault.length - movers.length;
+  if (!movers.length) {
+    return toast(skipped ? 'Only a tool’s creator can move it - none here are yours' : 'The source vault has no tools');
+  }
   if (!btn.dataset.confirming) {
     btn.dataset.confirming = '1';
     btn.textContent = `Click again to move ${movers.length} tool${movers.length === 1 ? '' : 's'}`;
@@ -1485,7 +1500,7 @@ $('btn-bulk-move').addEventListener('click', async (e) => {
       moved++;
     }
     api.logEvent('items.bulk_move', { from, to, count: moved });
-    toast(`Moved ${moved} tool${moved === 1 ? '' : 's'}`);
+    toast(`Moved ${moved} tool${moved === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped - not yours)` : ''}`);
   } catch (err) {
     toast(`Moved ${moved}, then failed: ${err.message}`);
   } finally {
