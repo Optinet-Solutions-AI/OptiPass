@@ -2,6 +2,7 @@
 
 Optinet Solutions' team password manager — a Chrome (Manifest V3) extension backed by Supabase, with 1Password-style **zero-knowledge encryption**: the server only ever stores ciphertext.
 
+- **User guide (start here):** [USER-GUIDE.md](USER-GUIDE.md) — install, sign up, and every feature
 - **Setup:** see [SETUP.md](SETUP.md) (one-time Supabase setup + team onboarding)
 - **Feature roadmap vs 1Password:** see [FEATURES.md](FEATURES.md)
 
