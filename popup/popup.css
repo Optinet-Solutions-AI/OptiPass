@@ -654,7 +654,7 @@ textarea {
 }
 
 .credit-label {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -662,14 +662,14 @@ textarea {
 }
 
 .credit-value {
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .credit-meta {
   margin-left: auto;
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--muted);
   text-align: right;
   white-space: nowrap;
