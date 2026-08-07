@@ -515,6 +515,10 @@ textarea {
   margin-bottom: 12px;
 }
 
+.topbar .push {
+  margin-left: auto;
+}
+
 .topbar h2 {
   font-size: 13.5px;
   font-weight: 600;

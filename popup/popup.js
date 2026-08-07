@@ -154,11 +154,8 @@ function hideError(id) {
 }
 
 function applyTheme(theme) {
-  const dark = theme === 'dark';
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
   $('set-theme').value = theme;
-  $('btn-theme').innerHTML = icon(dark ? 'sun' : 'moon');
-  $('btn-theme').title = dark ? 'Switch to light mode' : 'Switch to dark mode';
 }
 
 async function setTheme(theme, syncProfile) {
@@ -177,6 +174,10 @@ async function boot() {
   state.settings = await keychain.getSettings();
   applyTheme(state.settings.theme || 'light');
   maybeAutoReload(); // apply new files after a git pull, silently
+  chrome.storage.session
+    .get('optipass_update')
+    .then((o) => (state.updateAvailable = o.optipass_update || null))
+    .catch(() => {});
   state.activeHost = await getActiveHost();
 
   if (!api.isConfigured()) return showScreen('config');
@@ -544,13 +545,6 @@ function sortedVaults() {
 }
 
 function populateVaultSelects() {
-  const filter = $('vault-filter');
-  const prev = filter.value;
-  filter.innerHTML = '';
-  filter.append(new Option('All vaults', 'all'));
-  for (const m of sortedVaults()) filter.append(new Option(m.vaults.name, m.vault_id));
-  if ([...filter.options].some((o) => o.value === prev)) filter.value = prev;
-
   const fv = $('f-vault');
   fv.innerHTML = '';
   for (const m of sortedVaults()) {
@@ -630,15 +624,12 @@ const PAGE_SIZE = 8;
 
 function renderList() {
   const query = $('search').value.trim().toLowerCase();
-  const vaultFilter = $('vault-filter').value || 'all';
   const tagFilter = $('tag-filter').value || 'all';
   const list = $('entry-list');
   list.innerHTML = '';
 
   let entries = state.items.filter(
-    (e) =>
-      (vaultFilter === 'all' || e.vault_id === vaultFilter) &&
-      (tagFilter === 'all' || (e.data.tags || []).includes(tagFilter))
+    (e) => tagFilter === 'all' || (e.data.tags || []).includes(tagFilter)
   );
   entries.sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
   if (query) {
@@ -815,7 +806,6 @@ function resetAndRender() {
 }
 
 $('search').addEventListener('input', resetAndRender);
-$('vault-filter').addEventListener('change', resetAndRender);
 $('tag-filter').addEventListener('change', resetAndRender);
 
 // Label filter options come from the labels present on visible entries.
@@ -853,9 +843,6 @@ $('btn-admin').addEventListener('click', async () => {
   showScreen('admin');
   await loadAdminScreen();
 });
-$('btn-theme').addEventListener('click', () =>
-  setTheme(state.settings.theme === 'dark' ? 'light' : 'dark', true)
-);
 
 // ---------- autofill ----------
 
@@ -950,9 +937,6 @@ async function openEdit(id, resume = null) {
     fv.value = d.vault;
   } else if (entry) {
     fv.value = entry.vault_id;
-  } else {
-    const filter = $('vault-filter').value;
-    if (filter !== 'all' && vaultWritable(filter)) fv.value = filter;
   }
 
   // Only the tool's creator may move it to another vault (also
@@ -1456,7 +1440,9 @@ async function loadSettingsScreen() {
   $('btn-pin-remove').classList.toggle('hidden', !pinOn);
   $('set-autoupdate').checked = state.settings.autoUpdate !== false;
   $('set-alerts').checked = state.settings.alertsBadge !== false;
-  $('upd-status').textContent = `Running v${chrome.runtime.getManifest().version}`;
+  $('upd-status').textContent = state.updateAvailable
+    ? `v${state.updateAvailable} is available - run "git pull" in the OptiPass folder (it applies automatically).`
+    : `Running v${chrome.runtime.getManifest().version}`;
   $('btn-reload-ext').classList.add('hidden');
 
   // Bulk move: source and target vault selectors
@@ -2063,15 +2049,18 @@ function monitorIsLow(mon) {
   );
 }
 
-// Red count badge on the toolbar icon when any metric is LOW.
+// Toolbar badge: LOW metric count wins; otherwise an available update.
 function updateLowBadge() {
-  if (state.settings.alertsBadge === false) {
+  const low = state.settings.alertsBadge === false ? 0 : state.monitors.filter(monitorIsLow).length;
+  if (low > 0) {
+    chrome.action.setBadgeBackgroundColor({ color: '#b4544a' });
+    chrome.action.setBadgeText({ text: String(low) });
+  } else if (state.updateAvailable) {
+    chrome.action.setBadgeBackgroundColor({ color: '#5551d8' });
+    chrome.action.setBadgeText({ text: 'NEW' });
+  } else {
     chrome.action.setBadgeText({ text: '' });
-    return;
   }
-  const low = state.monitors.filter(monitorIsLow).length;
-  chrome.action.setBadgeBackgroundColor({ color: '#b4544a' });
-  chrome.action.setBadgeText({ text: low > 0 ? String(low) : '' });
 }
 
 // After a git pull the folder holds a newer manifest than the running
@@ -2683,7 +2672,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 const TOUR_STEPS = [
   { el: 'search', title: 'Search', text: 'Find any login by name, username, or website.' },
   { el: 'btn-add', title: 'Add entries', text: 'Save logins - with 2FA codes, API keys, and credit monitors attached to them.' },
-  { el: 'vault-filter', title: 'Vaults are your teams', text: 'Personal is only yours - not even admins can read it. Shared vaults (like AI Team) are visible only to their members.' },
+  { el: 'tag-filter', title: 'Tags group your tools', text: 'Tag tools by project and filter here. Sharing works through "Who has access" on each tool - Personal stays private, even from admins.' },
   { el: 'entry-list', title: 'Your vault', text: 'Fill a login on the current site (⬇), or copy the username, password, or 2FA code. Credit readings appear in a box under their tool and turn red when LOW.' },
   { el: 'btn-theme', title: 'Theme', text: 'Light or dark - your choice follows you to every device.' },
   { el: 'btn-lock', title: 'Lock', text: 'Locks the vault. Unlock with your 6-digit PIN or master password.' },

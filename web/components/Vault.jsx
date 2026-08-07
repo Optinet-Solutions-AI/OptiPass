@@ -20,23 +20,13 @@ export default function Vault({
   onLock,
 }) {
   const [query, setQuery] = useState('');
-  const [vaultFilter, setVaultFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
-
-  const sortedVaults = [...memberships].sort((a, b) => {
-    if (a.vaults.type !== b.vaults.type) return a.vaults.type === 'personal' ? -1 : 1;
-    return a.vaults.name.localeCompare(b.vaults.name);
-  });
 
   const allTags = [...new Set(items.flatMap((e) => e.data.tags || []))].sort((a, b) =>
     a.localeCompare(b)
   );
 
-  let entries = items.filter(
-    (e) =>
-      (vaultFilter === 'all' || e.vault_id === vaultFilter) &&
-      (tagFilter === 'all' || (e.data.tags || []).includes(tagFilter))
-  );
+  let entries = items.filter((e) => tagFilter === 'all' || (e.data.tags || []).includes(tagFilter));
   entries = [...entries].sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''));
   const q = query.trim().toLowerCase();
   if (q) {
@@ -63,36 +53,28 @@ export default function Vault({
   }
 
   const isAdmin = ['admin', 'super_admin'].includes(profile?.role);
-  const dark = settings.theme === 'dark';
 
   return (
     <div className="screen">
       <header className="topbar">
         <input type="search" placeholder="Search vault..." value={query} onChange={(e) => setQuery(e.target.value)} />
-        <button className="btn icon" title="Add entry" onClick={onAdd}><Icon name="plus" /></button>
-        <button className="btn icon" title="Settings" onClick={onSettings}><Icon name="sliders" /></button>
+        <button className="btn icon" title="Add tool" onClick={onAdd}><Icon name="plus" /></button>
+        <button className="btn icon" title="Settings" onClick={onSettings}><Icon name="cog" /></button>
         <button className="btn icon" title="Lock vault" onClick={onLock}><Icon name="lock" /></button>
       </header>
-      <div className="topbar">
-        <select value={vaultFilter} onChange={(e) => setVaultFilter(e.target.value)}>
-          <option value="all">All vaults</option>
-          {sortedVaults.map((m) => (
-            <option key={m.vault_id} value={m.vault_id}>{m.vaults.name}</option>
-          ))}
-        </select>
-        {allTags.length > 0 && (
-          <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
-            <option value="all">All labels</option>
-            {allTags.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        )}
-        <button className="btn icon" title="Toggle light / dark" onClick={() => setTheme(dark ? 'light' : 'dark')}>
-          <Icon name={dark ? 'sun' : 'moon'} />
-        </button>
-        {isAdmin && <button className="btn" onClick={onAdmin}>Admin</button>}
-      </div>
+      {(allTags.length > 0 || isAdmin) && (
+        <div className="topbar">
+          {allTags.length > 0 && (
+            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+              <option value="all">All tags</option>
+              {allTags.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          )}
+          {isAdmin && <button className="btn" style={{ marginLeft: 'auto' }} onClick={onAdmin}>Admin</button>}
+        </div>
+      )}
 
       {entries.length === 0 ? (
         <div className="empty">
@@ -121,7 +103,7 @@ export default function Vault({
                           via {SSO_LABELS[entry.data.signinMethod] || 'SSO'}
                         </span>
                       )}
-                      {m && m.vaults.type === 'shared' && vaultFilter === 'all' && (
+                      {m && m.vaults.type === 'shared' && (
                         <span className="badge gray">{m.vaults.name}</span>
                       )}
                       {(entry.data.tags || []).map((t) => (

@@ -8,6 +8,7 @@
 
 import { rest } from './lib/api.js';
 import { decryptJson, importKeyB64 } from './lib/crypto.js';
+import { getVersions, newer } from './lib/updates.js';
 
 const SESSION_KEYS = 'optipass_session_keys';
 const AUTOLOCK_ALARM = 'optipass-autolock';
@@ -242,34 +243,46 @@ chrome.runtime.onMessage.addListener((msg) => {
 async function maintenance() {
   const { optipass_settings: settings = {} } = await chrome.storage.local.get('optipass_settings');
 
-  // Auto-apply updates: new files on disk -> reload the extension.
+  // Version housekeeping: auto-apply pulled files; flag newer releases.
+  let updateAvailable = null;
   try {
-    if (settings.autoUpdate !== false) {
-      const disk = (await (await fetch(chrome.runtime.getURL('manifest.json'))).json()).version;
-      if (disk && disk !== chrome.runtime.getManifest().version) {
-        chrome.runtime.reload();
-        return;
-      }
-    }
-  } catch {
-    /* manifest unreadable - skip */
-  }
-
-  // LOW-alert badge from the team's latest readings.
-  try {
-    if (settings.alertsBadge === false) {
-      chrome.action.setBadgeText({ text: '' });
+    const v = await getVersions();
+    if (settings.autoUpdate !== false && v.disk && v.disk !== v.running) {
+      chrome.runtime.reload();
       return;
     }
-    const monitors = await rest('/tool_monitors?select=last_numeric,threshold');
-    const low = monitors.filter(
-      (m) =>
-        m.threshold !== null &&
-        m.last_numeric !== null &&
-        Number(m.last_numeric) < Number(m.threshold)
-    ).length;
-    chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
-    chrome.action.setBadgeText({ text: low > 0 ? String(low) : '' });
+    if (v.remote && newer(v.remote, v.disk || v.running)) updateAvailable = v.remote;
+  } catch {
+    /* offline - skip */
+  }
+  try {
+    if (updateAvailable) await chrome.storage.session.set({ optipass_update: updateAvailable });
+    else await chrome.storage.session.remove('optipass_update');
+  } catch {
+    /* ignore */
+  }
+
+  // Badge: LOW alerts win; otherwise flag an available update.
+  try {
+    let low = 0;
+    if (settings.alertsBadge !== false) {
+      const monitors = await rest('/tool_monitors?select=last_numeric,threshold');
+      low = monitors.filter(
+        (m) =>
+          m.threshold !== null &&
+          m.last_numeric !== null &&
+          Number(m.last_numeric) < Number(m.threshold)
+      ).length;
+    }
+    if (low > 0) {
+      chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
+      chrome.action.setBadgeText({ text: String(low) });
+    } else if (updateAvailable) {
+      chrome.action.setBadgeBackgroundColor({ color: '#5551d8' });
+      chrome.action.setBadgeText({ text: 'NEW' });
+    } else {
+      chrome.action.setBadgeText({ text: '' });
+    }
   } catch {
     /* signed out or offline - keep the current badge */
   }
