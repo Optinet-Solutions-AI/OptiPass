@@ -13,6 +13,11 @@ import {
 import * as api from '../lib/api.js';
 import * as keychain from '../lib/keychain.js';
 import { getVersions, newer } from '../lib/updates.js';
+import { WEB_URL } from '../lib/config.js';
+
+function signupLink(inv) {
+  return `${WEB_URL}/?invite=${encodeURIComponent(inv.code)}&email=${encodeURIComponent(inv.email)}`;
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -1719,12 +1724,20 @@ async function loadAdminInvites() {
     who.textContent = `${inv.email} (${inv.role})`;
     row.appendChild(who);
     if (inv.code) {
+      const linkBtn = document.createElement('button');
+      linkBtn.className = 'btn small';
+      linkBtn.textContent = 'Copy link';
+      linkBtn.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(signupLink(inv));
+        toast('Signup link copied - it prefills their invite and email');
+      });
+      row.appendChild(linkBtn);
       const copyBtn = document.createElement('button');
       copyBtn.className = 'btn small';
       copyBtn.textContent = 'Copy code';
       copyBtn.addEventListener('click', async () => {
         await navigator.clipboard.writeText(inv.code);
-        toast('Invite code copied - send it to your teammate');
+        toast('Invite code copied');
       });
       row.appendChild(copyBtn);
     }
@@ -1754,8 +1767,8 @@ $('btn-invite').addEventListener('click', async () => {
     $('inv-email').value = '';
     await loadAdminInvites();
     if (inv?.code) {
-      await navigator.clipboard.writeText(inv.code);
-      toast(`Invited ${email} - invite code copied to clipboard`);
+      await navigator.clipboard.writeText(signupLink(inv));
+      toast(`Invited ${email} - signup link copied, just send it over`);
     } else {
       toast(`Invited ${email}`);
     }

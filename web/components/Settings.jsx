@@ -13,6 +13,7 @@ export default function Settings({
   uid,
   onChangeMaster,
   onSignOut,
+  onOpenGuide,
   onBack,
 }) {
   const [name, setName] = useState(profile?.display_name || '');
@@ -102,6 +103,11 @@ export default function Settings({
         <button className="btn full" disabled={busy} onClick={changeMaster}>
           {busy ? 'Re-encrypting...' : 'Change password'}
         </button>
+      </section>
+
+      <section>
+        <h3>Chrome extension</h3>
+        <button className="btn full" onClick={onOpenGuide}>Extension setup guide</button>
       </section>
 
       <section>

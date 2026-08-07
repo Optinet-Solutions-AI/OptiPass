@@ -5,6 +5,10 @@ import * as api from '@/lib/api';
 import { generateVaultKey, wrapVaultKey } from '@/lib/crypto';
 import { Icon } from '@/components/ui';
 
+function signupLink(inv) {
+  return `${window.location.origin}/?invite=${encodeURIComponent(inv.code)}&email=${encodeURIComponent(inv.email)}`;
+}
+
 export default function Admin({ profile, memberships, vaultKeysRef, refreshVaults, showToast, uid, onBack }) {
   const [users, setUsers] = useState([]);
   const [invites, setInvites] = useState([]);
@@ -75,8 +79,8 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
       setInvEmail('');
       await loadInvites();
       if (inv?.code) {
-        await navigator.clipboard.writeText(inv.code);
-        showToast(`Invited ${email} - invite code copied`);
+        await navigator.clipboard.writeText(signupLink(inv));
+        showToast(`Invited ${email} - signup link copied`);
       } else {
         showToast(`Invited ${email}`);
       }
@@ -211,9 +215,14 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
             <div className="person" key={inv.email}>
               <div className="who">{inv.email} ({inv.role})</div>
               {inv.code && (
-                <button className="btn small" onClick={async () => { await navigator.clipboard.writeText(inv.code); showToast('Invite code copied'); }}>
-                  Copy code
-                </button>
+                <>
+                  <button className="btn small" onClick={async () => { await navigator.clipboard.writeText(signupLink(inv)); showToast('Signup link copied'); }}>
+                    Copy link
+                  </button>
+                  <button className="btn small" onClick={async () => { await navigator.clipboard.writeText(inv.code); showToast('Invite code copied'); }}>
+                    Copy code
+                  </button>
+                </>
               )}
               <button
                 className="btn small"

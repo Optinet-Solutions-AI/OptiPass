@@ -15,6 +15,7 @@ import {
 } from '@/lib/crypto';
 import { pluck } from '@/components/ui';
 import Auth from '@/components/Auth';
+import SetupGuide from '@/components/SetupGuide';
 import Vault from '@/components/Vault';
 import Editor from '@/components/Editor';
 import Admin from '@/components/Admin';
@@ -219,6 +220,9 @@ export default function App() {
     api.logEvent('keys.setup');
     await enterMain(prof);
     showToast('Vault ready');
+    if (!localStorage.getItem('optipass_setup_seen')) {
+      setScreen('guide'); // first run: walk them through installing the extension
+    }
   }
 
   async function handleUnlock(masterPassword) {
@@ -491,9 +495,18 @@ export default function App() {
           onBack={() => setScreen('main')}
         />
       )}
+      {screen === 'guide' && (
+        <SetupGuide
+          onContinue={() => {
+            localStorage.setItem('optipass_setup_seen', '1');
+            setScreen('main');
+          }}
+        />
+      )}
       {screen === 'settings' && (
         <Settings
           {...shared}
+          onOpenGuide={() => setScreen('guide')}
           setSettings={(s) => {
             setSettings(s);
             keychain.saveSettings(s);

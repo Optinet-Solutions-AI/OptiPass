@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as api from '@/lib/api';
 
 function Brand({ title, sub }) {
@@ -34,6 +34,17 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
   const [error, setError] = useState(null);
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // Signup links carry ?invite=CODE&email=... - prefill both so the
+  // new teammate only chooses a password.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('invite')) {
+      setMode('signup');
+      setInvite(p.get('invite'));
+      if (p.get('email')) setEmail(p.get('email'));
+    }
+  }, []);
 
   async function submitLogin() {
     setError(null);
