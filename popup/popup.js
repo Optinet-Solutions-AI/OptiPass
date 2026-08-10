@@ -1001,13 +1001,6 @@ async function openEdit(id, resume = null) {
   $('tu-currency').value = 'USD';
   $('tu-method').value = '';
   $('tu-freq').value = 'topup';
-  const mvSel = $('tu-move-target');
-  mvSel.innerHTML = '';
-  mvSel.append(new Option('Move history to...', ''));
-  for (const e of [...state.items].sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''))) {
-    if (e.id === id || !state.vaultKeys.get(e.vault_id)) continue;
-    mvSel.append(new Option(e.data.title || '(untitled)', e.id));
-  }
   renderTopupList();
 
   // ----- extra API-key secrets -----
@@ -1120,66 +1113,7 @@ function renderTopupList() {
     );
     list.appendChild(row);
   }
-  $('topup-move-row').classList.toggle('hidden', !sorted.length);
 }
-
-// Move the whole payment history to another tool (fixes "recorded it on
-// the wrong tool"). The target is written first so records can never be
-// lost: a failure before that leaves everything untouched, a failure
-// after it leaves them on both tools, never on neither.
-$('btn-topup-move').addEventListener('click', async () => {
-  const targetId = $('tu-move-target').value;
-  if (!targetId) return toast('Pick the tool to move the history to');
-  if (!state.editTopups.length) return toast('No payment history to move');
-  const target = state.items.find((e) => e.id === targetId);
-  const targetKey = target && state.vaultKeys.get(target.vault_id);
-  if (!targetKey) return toast("That tool's vault isn't unlocked");
-  const moved = state.editTopups.splice(0, state.editTopups.length);
-  const btn = $('btn-topup-move');
-  btn.disabled = true;
-  let targetSaved = false;
-  try {
-    const now = new Date().toISOString();
-    const targetData = {
-      ...target.data,
-      topups: [...(target.data.topups || []), ...moved],
-      updatedAt: now,
-    };
-    const enc = await encryptJson(targetKey, targetData);
-    await api.rest(`/items?id=eq.${target.id}`, {
-      method: 'PATCH',
-      body: { vault_id: target.vault_id, iv: enc.iv, enc_data: enc.ct },
-    });
-    target.data = targetData;
-    targetSaved = true;
-    api.logEvent('item.update', { item_id: target.id, vault_id: target.vault_id });
-
-    const source = state.editingId ? state.items.find((e) => e.id === state.editingId) : null;
-    if (source) {
-      const srcKey = state.vaultKeys.get(source.vault_id);
-      const srcData = { ...source.data, topups: [], updatedAt: now };
-      const encS = await encryptJson(srcKey, srcData);
-      await api.rest(`/items?id=eq.${source.id}`, {
-        method: 'PATCH',
-        body: { vault_id: source.vault_id, iv: encS.iv, enc_data: encS.ct },
-      });
-      source.data = srcData;
-      api.logEvent('item.update', { item_id: source.id, vault_id: source.vault_id });
-    }
-    renderTopupList();
-    toast(`Moved ${moved.length} payment${moved.length === 1 ? '' : 's'} to ${target.data.title}`);
-  } catch (err) {
-    if (!targetSaved) state.editTopups.push(...moved);
-    renderTopupList();
-    toast(
-      targetSaved
-        ? `Copied to ${target.data.title} but couldn't clear this tool - press Save to finish`
-        : 'Move failed - nothing was changed'
-    );
-  } finally {
-    btn.disabled = false;
-  }
-});
 
 // ---------- payment requests (pending top-ups for Alex & co) ----------
 

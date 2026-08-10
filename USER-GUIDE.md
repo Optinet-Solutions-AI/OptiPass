@@ -173,10 +173,6 @@ red badge appears on the OptiPass toolbar icon.
 - **Payment history**: every top-up with date, amount, currency, method, and
   whether it's a one-time top-up, monthly subscription, or auto-recharge
   (pay-as-you-go).
-- **Recorded payments on the wrong tool?** Open that tool, expand
-  **Payments & top-ups**, pick the right tool in **"Move history to..."**
-  under the history list, and press **Move** — every record transfers in
-  one click and both tools are saved automatically.
 
 ### Notes
 Anything else — recovery codes, quirks, who owns the account.
