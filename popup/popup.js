@@ -1090,7 +1090,7 @@ function openLink(raw) {
 $('btn-open-url').addEventListener('click', () => openLink($('f-url').value));
 $('btn-open-payment').addEventListener('click', () => openLink($('f-payment-link').value));
 
-const FREQ_LABELS = { topup: 'one-time top-up', monthly: 'monthly subscription' };
+const FREQ_LABELS = { topup: 'one-time top-up', monthly: 'monthly subscription', auto: 'auto-recharge' };
 
 function renderTopupList() {
   const list = $('topup-list');
@@ -1118,16 +1118,35 @@ function renderTopupList() {
 
 // ---------- payment requests (pending top-ups for Alex & co) ----------
 
-function requestSummary(req, { title, link, login }) {
+// Credentials for the summary come from the editor form; OAuth tools
+// pull the login of the linked identity account instead.
+function summaryContext() {
+  const ctx = {
+    title: $('f-title').value.trim() || 'tool',
+    link: $('f-payment-link').value.trim() || $('f-url').value.trim(),
+  };
+  if ($('f-signin').value !== 'password') {
+    const linked = state.items.find((e) => e.id === $('f-sso-item').value);
+    ctx.oauth = linked?.data.title || 'OAuth';
+    ctx.username = linked?.data.username || linked?.data.ssoEmail || '';
+    ctx.password = linked?.data.password || '';
+  } else {
+    ctx.username = $('f-username').value.trim();
+    ctx.password = $('f-password').value;
+  }
+  return ctx;
+}
+
+function requestSummary(req, ctx) {
   const lines = [
-    'OptiPass payment request',
-    `Tool: ${title}`,
+    `Tool: ${ctx.title}`,
     `Amount: ${Number(req.amount).toLocaleString()} ${req.currency}`,
   ];
-  if (link) lines.push(`Payment link: ${link.includes('://') ? link : `https://${link}`}`);
-  if (login) lines.push(`Login: ${login} (password & 2FA fill via OptiPass - right-click the login fields)`);
+  if (ctx.link) lines.push(`Payment link: ${ctx.link.includes('://') ? ctx.link : `https://${ctx.link}`}`);
+  if (ctx.oauth) lines.push(`Login with ${ctx.oauth}`);
+  if (ctx.username) lines.push(`username: ${ctx.username}`);
+  if (ctx.password) lines.push(`password: ${ctx.password}`);
   if (req.note) lines.push(`Note: ${req.note}`);
-  lines.push(`Requested by ${req.requestedBy} on ${req.date}`);
   return lines.join('\n');
 }
 
@@ -1146,13 +1165,7 @@ function renderPayReqList() {
     row.appendChild(who);
     row.appendChild(
       actionBtn('copy', 'Copy summary for WhatsApp', async () => {
-        await navigator.clipboard.writeText(
-          requestSummary(req, {
-            title: $('f-title').value.trim() || 'tool',
-            link: $('f-payment-link').value.trim() || $('f-url').value.trim(),
-            login: $('f-username').value.trim(),
-          })
-        );
+        await navigator.clipboard.writeText(requestSummary(req, summaryContext()));
         toast('Summary copied');
       })
     );
@@ -1197,13 +1210,7 @@ $('btn-payreq-add').addEventListener('click', async () => {
   $('pr-amount').value = '';
   $('pr-note').value = '';
   renderPayReqList();
-  await navigator.clipboard.writeText(
-    requestSummary(req, {
-      title: $('f-title').value.trim() || 'tool',
-      link: $('f-payment-link').value.trim() || $('f-url').value.trim(),
-      login: $('f-username').value.trim(),
-    })
-  );
+  await navigator.clipboard.writeText(requestSummary(req, summaryContext()));
   toast('Request added & summary copied - press Save to store it');
 });
 
