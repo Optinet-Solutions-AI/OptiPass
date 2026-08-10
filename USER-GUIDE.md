@@ -162,15 +162,17 @@ red badge appears on the OptiPass toolbar icon.
 
 ### Payments & top-ups
 - **Payment link** — the tool's billing page, with a one-click open button
-- **Request a payment**: enter amount/currency/note → **"Request payment &
-  copy summary"** → paste the summary in WhatsApp. The request stays
-  **pending** (badge on the tool) until marked paid.
+- **Request a payment**: enter amount/currency → **"Request payment &
+  copy summary"** → paste the summary in WhatsApp. The summary includes the
+  tool's payment link and login credentials. The request stays **pending**
+  (badge on the tool) until marked paid.
 - **For the person paying**: when you open that tool's payment page, OptiPass
   pops up a **guide window** with the amount, open-page button, copy
   login/password/2FA, and **Mark as paid** — which files the payment into
   history automatically.
 - **Payment history**: every top-up with date, amount, currency, method, and
-  whether it's a one-time top-up or monthly subscription.
+  whether it's a one-time top-up, monthly subscription, or auto-recharge
+  (pay-as-you-go).
 
 ### Notes
 Anything else — recovery codes, quirks, who owns the account.

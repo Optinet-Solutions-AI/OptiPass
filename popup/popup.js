@@ -994,7 +994,6 @@ async function openEdit(id, resume = null) {
   state.editPayReqs = (d?.paymentRequests ?? entry?.data.paymentRequests ?? []).map((r) => ({ ...r }));
   $('pr-amount').value = '';
   $('pr-currency').value = 'USD';
-  $('pr-note').value = '';
   renderPayReqList();
   state.editTopups = (d?.topups ?? entry?.data.topups ?? []).map((t) => ({ ...t }));
   $('tu-date').value = new Date().toISOString().slice(0, 10);
@@ -1146,7 +1145,6 @@ function requestSummary(req, ctx) {
   if (ctx.oauth) lines.push(`Login with ${ctx.oauth}`);
   if (ctx.username) lines.push(`username: ${ctx.username}`);
   if (ctx.password) lines.push(`password: ${ctx.password}`);
-  if (req.note) lines.push(`Note: ${req.note}`);
   return lines.join('\n');
 }
 
@@ -1160,7 +1158,7 @@ function renderPayReqList() {
     who.className = 'who';
     who.textContent = `${Number(req.amount).toLocaleString()} ${req.currency} - pending`;
     const small = document.createElement('small');
-    small.textContent = `${req.date} - ${req.requestedBy}${req.note ? ` - ${req.note}` : ''}`;
+    small.textContent = `${req.date} - ${req.requestedBy}`;
     who.appendChild(small);
     row.appendChild(who);
     row.appendChild(
@@ -1202,13 +1200,11 @@ $('btn-payreq-add').addEventListener('click', async () => {
     date: new Date().toISOString().slice(0, 10),
     amount,
     currency: ($('pr-currency').value.trim() || 'USD').toUpperCase(),
-    note: $('pr-note').value.trim(),
     requestedBy: state.profile?.display_name || state.profile?.email || 'unknown',
     status: 'pending',
   };
   state.editPayReqs.push(req);
   $('pr-amount').value = '';
-  $('pr-note').value = '';
   renderPayReqList();
   await navigator.clipboard.writeText(requestSummary(req, summaryContext()));
   toast('Request added & summary copied - press Save to store it');
@@ -1957,7 +1953,6 @@ function openPayGuide(itemId) {
   };
   addLine('Tool', entry.data.title || '(untitled)');
   addLine('Amount', `${Number(req.amount).toLocaleString()} ${req.currency}`, true);
-  if (req.note) addLine('Note', req.note);
   addLine('Requested by', `${req.requestedBy} on ${req.date}`);
   const login = entry.data.username || entry.data.ssoEmail;
   if (login) addLine('Login', login);
