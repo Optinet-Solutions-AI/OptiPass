@@ -192,8 +192,7 @@ Anything else — recovery codes, quirks, who owns the account.
 
 > **Only the tool's creator can move it.** If you didn't create the tool,
 > the "Who has access" selector is locked — and the database itself refuses
-> the move even if someone tries to force it. To move many tools at once,
-> use **Settings → Bulk move tools** (it moves only the tools you created).
+> the move even if someone tries to force it.
 
 ---
 
@@ -207,9 +206,8 @@ Anything else — recovery codes, quirks, who owns the account.
   (add/edit tools), **Viewer** (see and copy only).
 - Sharing *part* of a tool (e.g. just an API key): make a second entry with
   only that key in a vault the right people are in.
-- **Move tools between vaults**: edit the tool and change "Who has access",
-  or move many at once via **Settings → Bulk move tools**. **Only a tool's
-  creator can move it** — enforced by the database.
+- **Move tools between vaults**: edit the tool and change "Who has access".
+  **Only a tool's creator can move it** — enforced by the database.
 - Removing someone from a vault stops their access instantly — but rotate any
   passwords they already saw (true of every password manager).
 
@@ -279,7 +277,6 @@ fill, the element picker, the PIN, and the toolbar badge.
 | Change master password | Re-encrypts your keys; vault data untouched |
 | Updates | Auto-update toggle (default on) + manual check |
 | Alerts | Toolbar badge for LOW metrics |
-| Bulk move tools | Move every tool from one vault to another |
 | Help / tour | This guide's short version + the interactive tour |
 
 ---

@@ -1467,64 +1467,7 @@ async function loadSettingsScreen() {
     ? `v${state.updateAvailable} is available - run "git pull" in the OptiPass folder (it applies automatically).`
     : `Running v${chrome.runtime.getManifest().version}`;
   $('btn-reload-ext').classList.add('hidden');
-
-  // Bulk move: source and target vault selectors
-  for (const selId of ['bm-from', 'bm-to']) {
-    const sel = $(selId);
-    sel.innerHTML = '';
-    for (const m of sortedVaults()) {
-      if (!['manager', 'editor'].includes(m.role)) continue;
-      const label = m.vaults.type === 'personal' ? 'Private (only me)' : `Team: ${m.vaults.name}`;
-      sel.append(new Option(`${selId === 'bm-from' ? 'From' : 'To'}: ${label}`, m.vault_id));
-    }
-  }
-  const bm = $('btn-bulk-move');
-  bm.textContent = 'Move tools';
-  bm.dataset.confirming = '';
 }
-
-$('btn-bulk-move').addEventListener('click', async (e) => {
-  const btn = e.currentTarget;
-  const from = $('bm-from').value;
-  const to = $('bm-to').value;
-  if (!from || !to || from === to) return toast('Pick two different vaults');
-  const targetKey = state.vaultKeys.get(to);
-  if (!targetKey) return toast('No key available for the target vault');
-  const inVault = state.items.filter((i) => i.vault_id === from);
-  const movers = inVault.filter((i) => !i.created_by || i.created_by === state.uid);
-  const skipped = inVault.length - movers.length;
-  if (!movers.length) {
-    return toast(skipped ? 'Only a tool’s creator can move it - none here are yours' : 'The source vault has no tools');
-  }
-  if (!btn.dataset.confirming) {
-    btn.dataset.confirming = '1';
-    btn.textContent = `Click again to move ${movers.length} tool${movers.length === 1 ? '' : 's'}`;
-    return;
-  }
-  btn.disabled = true;
-  let moved = 0;
-  try {
-    for (const item of movers) {
-      const { iv, ct } = await encryptJson(targetKey, item.data);
-      await api.rest(`/items?id=eq.${item.id}`, {
-        method: 'PATCH',
-        body: { vault_id: to, iv, enc_data: ct },
-      });
-      item.vault_id = to;
-      moved++;
-    }
-    api.logEvent('items.bulk_move', { from, to, count: moved });
-    toast(`Moved ${moved} tool${moved === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped - not yours)` : ''}`);
-  } catch (err) {
-    toast(`Moved ${moved}, then failed: ${err.message}`);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Move tools';
-    btn.dataset.confirming = '';
-    populateTagFilter();
-    renderList();
-  }
-});
 
 $('set-autoupdate').addEventListener('change', async (e) => {
   state.settings.autoUpdate = e.target.checked;
