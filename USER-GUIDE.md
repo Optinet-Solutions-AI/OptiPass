@@ -223,8 +223,10 @@ Anything else — recovery codes, quirks, who owns the account.
   only that key in a vault the right people are in.
 - **Move tools between vaults**: edit the tool and change "Who has access".
   **Only a tool's creator can move it** — enforced by the database.
-- Removing someone from a vault stops their access instantly — but rotate any
-  passwords they already saw (true of every password manager).
+- Removing someone from a vault (**Remove**, then **Confirm remove**) stops
+  their access instantly — but rotate any passwords they already saw (true of
+  every password manager). Removing a pending invite works the same way and
+  makes its signup link stop working.
 
 ---
 

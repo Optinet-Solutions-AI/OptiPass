@@ -1853,6 +1853,40 @@ function adminActionBtn(label, targetId, newRole, newStatus) {
   return b;
 }
 
+// Removing people takes two clicks: the first arms the button
+// ("Confirm remove"), the second acts. The outcome is always reported.
+function confirmButton(label, confirmLabel, action) {
+  const b = document.createElement('button');
+  b.className = 'btn small danger';
+  b.textContent = label;
+  b.addEventListener('click', async () => {
+    if (!b.dataset.confirming) {
+      b.dataset.confirming = '1';
+      b.textContent = confirmLabel;
+      return;
+    }
+    b.disabled = true;
+    try {
+      await action();
+    } catch (err) {
+      toast(err.message);
+      b.disabled = false;
+      b.dataset.confirming = '';
+      b.textContent = label;
+    }
+  });
+  return b;
+}
+
+// Like patchItemOrFail: a DELETE the permission rules block removes nothing
+// without an error, so ask for the removed rows back.
+async function deleteOrFail(path, what) {
+  const rows = await api.rest(path, { method: 'DELETE', prefer: 'return=representation' });
+  if (!rows || rows.length === 0) {
+    throw new Error(`Couldn't remove ${what}: you may not have permission, or it was already removed.`);
+  }
+}
+
 async function loadAdminInvites() {
   const invites = await api.rest('/invites?select=*&order=email');
   state.adminInvites = invites;
@@ -1884,15 +1918,14 @@ async function loadAdminInvites() {
       });
       row.appendChild(copyBtn);
     }
-    const b = document.createElement('button');
-    b.className = 'btn small';
-    b.textContent = 'Remove';
-    b.addEventListener('click', async () => {
-      await api.rest(`/invites?email=eq.${encodeURIComponent(inv.email)}`, { method: 'DELETE' });
-      api.logEvent('invite.delete', { email: inv.email });
-      loadAdminInvites();
-    });
-    row.appendChild(b);
+    row.appendChild(
+      confirmButton('Remove', 'Confirm remove', async () => {
+        await deleteOrFail(`/invites?email=eq.${encodeURIComponent(inv.email)}`, 'this invite');
+        api.logEvent('invite.delete', { email: inv.email });
+        await loadAdminInvites();
+        toast(`Invite for ${inv.email} removed - their signup link no longer works`);
+      })
+    );
     box.appendChild(row);
   }
 }
@@ -1984,15 +2017,15 @@ async function loadVaultMembers() {
     who.textContent = `${mem.profiles?.display_name || mem.profiles?.email || mem.user_id} (${ROLE_LABELS[mem.role] || mem.role})`;
     row.appendChild(who);
     if (mem.user_id !== state.uid) {
-      const b = document.createElement('button');
-      b.className = 'btn small';
-      b.textContent = 'Remove';
-      b.addEventListener('click', async () => {
-        await api.rest(`/vault_members?vault_id=eq.${vaultId}&user_id=eq.${mem.user_id}`, { method: 'DELETE' });
-        api.logEvent('member.remove', { vault_id: vaultId, user_id: mem.user_id });
-        loadVaultMembers();
-      });
-      row.appendChild(b);
+      const name = mem.profiles?.display_name || mem.profiles?.email || 'this person';
+      row.appendChild(
+        confirmButton('Remove', 'Confirm remove', async () => {
+          await deleteOrFail(`/vault_members?vault_id=eq.${vaultId}&user_id=eq.${mem.user_id}`, name);
+          api.logEvent('member.remove', { vault_id: vaultId, user_id: mem.user_id });
+          await loadVaultMembers();
+          toast(`Removed ${name} from ${vaultName(vaultId)}. Change any passwords they could see.`);
+        })
+      );
     }
     list.appendChild(row);
   }

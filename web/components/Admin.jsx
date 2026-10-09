@@ -21,6 +21,17 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
   const [mvRole, setMvRole] = useState('editor');
   const [confirmVaultDelete, setConfirmVaultDelete] = useState(false);
   const [deleteArm, setDeleteArm] = useState(null);
+  // Removing an invite or a member takes two clicks; holds the armed button's key.
+  const [removeArm, setRemoveArm] = useState(null);
+
+  // A DELETE the permission rules block removes nothing without an error,
+  // so ask for the removed rows back and report a block plainly.
+  async function removeOrFail(path, what) {
+    const rows = await api.rest(path, { method: 'DELETE', prefer: 'return=representation' });
+    if (!rows || rows.length === 0) {
+      throw new Error(`Couldn't remove ${what}: you may not have permission, or it was already removed.`);
+    }
+  }
 
   const isSuper = profile?.role === 'super_admin';
   const managed = memberships.filter((m) => m.role === 'manager' && m.vaults.type === 'shared');
@@ -242,13 +253,22 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
                 </>
               )}
               <button
-                className="btn small"
+                className="btn small danger"
                 onClick={async () => {
-                  await api.rest(`/invites?email=eq.${encodeURIComponent(inv.email)}`, { method: 'DELETE' });
-                  loadInvites();
+                  const armKey = `invite:${inv.email}`;
+                  if (removeArm !== armKey) return setRemoveArm(armKey);
+                  setRemoveArm(null);
+                  try {
+                    await removeOrFail(`/invites?email=eq.${encodeURIComponent(inv.email)}`, 'this invite');
+                    api.logEvent('invite.delete', { email: inv.email });
+                    await loadInvites();
+                    showToast(`Invite for ${inv.email} removed - their signup link no longer works`);
+                  } catch (err) {
+                    showToast(err.message);
+                  }
                 }}
               >
-                Remove
+                {removeArm === `invite:${inv.email}` ? 'Confirm remove' : 'Remove'}
               </button>
             </div>
           ))}
@@ -280,14 +300,24 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
               <div className="who">{mem.profiles?.display_name || mem.profiles?.email || mem.user_id} ({{ manager: 'Manager', editor: 'Editor', viewer: 'Viewer' }[mem.role] || mem.role})</div>
               {mem.user_id !== uid && (
                 <button
-                  className="btn small"
+                  className="btn small danger"
                   onClick={async () => {
-                    await api.rest(`/vault_members?vault_id=eq.${mvVault}&user_id=eq.${mem.user_id}`, { method: 'DELETE' });
-                    api.logEvent('member.remove', { vault_id: mvVault, user_id: mem.user_id });
-                    loadMembers(mvVault);
+                    const armKey = `member:${mem.user_id}`;
+                    if (removeArm !== armKey) return setRemoveArm(armKey);
+                    setRemoveArm(null);
+                    const name = mem.profiles?.display_name || mem.profiles?.email || 'this person';
+                    const vault = memberships.find((m) => m.vault_id === mvVault)?.vaults?.name || 'the vault';
+                    try {
+                      await removeOrFail(`/vault_members?vault_id=eq.${mvVault}&user_id=eq.${mem.user_id}`, name);
+                      api.logEvent('member.remove', { vault_id: mvVault, user_id: mem.user_id });
+                      await loadMembers(mvVault);
+                      showToast(`Removed ${name} from ${vault}. Change any passwords they could see.`);
+                    } catch (err) {
+                      showToast(err.message);
+                    }
                   }}
                 >
-                  Remove
+                  {removeArm === `member:${mem.user_id}` ? 'Confirm remove' : 'Remove'}
                 </button>
               )}
             </div>
