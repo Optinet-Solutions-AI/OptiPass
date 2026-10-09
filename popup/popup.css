@@ -384,6 +384,25 @@ textarea {
   margin: 14px 0 -8px;
 }
 
+/* "unsaved changes" prompt shown in the save bar when leaving the editor */
+.unsaved {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-tint);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.unsaved span {
+  flex: 1;
+  font-weight: 600;
+}
+
 .row input[type="text"],
 .row input[type="password"],
 .row input[type="email"] {

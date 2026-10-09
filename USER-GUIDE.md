@@ -128,10 +128,12 @@ Tags section to group tools by project. They become badges and a filter.
 
 **Step by step:**
 1. Find the tool (search is fastest) and click its row to expand it
-2. Click the **✎ pencil** button
+2. Click the **Edit** button
 3. Every part of the tool is a collapsible section — click a section header
    to open it, make your changes
-4. Click **Save** (the save bar sticks to the bottom, always reachable)
+4. Click **Save** (the save bar sticks to the bottom, always reachable).
+   If you press Back with unsaved changes, OptiPass asks first: **Discard
+   changes** or **Keep editing**.
 
 The sections:
 

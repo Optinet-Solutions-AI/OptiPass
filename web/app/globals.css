@@ -552,6 +552,25 @@ section h3 {
   margin-bottom: 10px;
 }
 
+/* "unsaved changes" prompt shown when leaving the editor */
+.unsaved {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--accent-tint);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.unsaved span {
+  flex: 1;
+  font-weight: 600;
+}
+
 /* feedback */
 .error {
   margin: 12px 0 0;

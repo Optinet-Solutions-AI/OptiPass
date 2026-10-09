@@ -1058,6 +1058,11 @@ async function openEdit(id, resume = null) {
   showScreen('edit');
   setTimeout(() => $('f-title').focus(), 50);
 
+  // Unsaved-changes baseline. A resumed picker draft already differs from
+  // what's stored, so it counts as changed from the start.
+  $('edit-unsaved').classList.add('hidden');
+  editBaseline = resume ? DRAFT_BASELINE : editSnapshot();
+
   // A pick just landed: jump straight back into the metric slide.
   if (resume && resume.draft?.pickIndex !== undefined && state.editMetrics[resume.draft.pickIndex]) {
     state.metricNew = !!resume.draft.metricNew;
@@ -1065,7 +1070,45 @@ async function openEdit(id, resume = null) {
   }
 }
 
-$('btn-edit-back').addEventListener('click', () => showScreen('main'));
+// ---------- unsaved-changes guard ----------
+
+const EDIT_FIELDS = ['f-title', 'f-url', 'f-vault', 'f-signin', 'f-sso-item', 'f-username', 'f-password',
+  'f-tags', 'f-totp', 'f-payment-link', 'f-notes'];
+const DRAFT_BASELINE = '(draft)';
+let editBaseline = null;
+
+// Everything Save would write, as one comparable string. Metric values are
+// stringified because the metric slide turns numbers into input strings.
+function editSnapshot() {
+  const metrics = state.editMetrics.map((m) =>
+    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v)]))
+  );
+  return JSON.stringify([
+    EDIT_FIELDS.map((id) => $(id).value),
+    state.editSecrets,
+    state.editPayReqs,
+    state.editTopups,
+    metrics,
+  ]);
+}
+
+function editIsDirty() {
+  return editBaseline !== null && editSnapshot() !== editBaseline;
+}
+
+function leaveEditor() {
+  editBaseline = null;
+  $('edit-unsaved').classList.add('hidden');
+  showScreen('main');
+}
+
+$('btn-edit-back').addEventListener('click', () => {
+  if (!editIsDirty()) return leaveEditor();
+  $('edit-unsaved').classList.remove('hidden');
+  $('btn-unsaved-keep').focus();
+});
+$('btn-unsaved-discard').addEventListener('click', leaveEditor);
+$('btn-unsaved-keep').addEventListener('click', () => $('edit-unsaved').classList.add('hidden'));
 
 $('btn-reveal').addEventListener('click', () => {
   state.revealPassword = !state.revealPassword;

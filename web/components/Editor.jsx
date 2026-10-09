@@ -4,6 +4,15 @@ import { useEffect, useState } from 'react';
 import { generatePassword, generateTotp } from '@/lib/crypto';
 import { Icon } from '@/components/ui';
 
+// Everything Save would write, as one comparable string. Metric values are
+// stringified so number vs input-string differences don't count as edits.
+function snapshotOf(v) {
+  const metrics = v.metrics.map((m) =>
+    Object.fromEntries(Object.entries(m).map(([k, x]) => [k, x === null || x === undefined ? '' : String(x)]))
+  );
+  return JSON.stringify({ ...v, metrics });
+}
+
 export default function Editor({
   entry,
   entryMonitors,
@@ -45,6 +54,9 @@ export default function Editor({
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Unsaved-changes guard: baseline is taken once the metric sub-forms load.
+  const [baseline, setBaseline] = useState(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   // Load metric sub-forms (decrypting API configs where we can)
   useEffect(() => {
@@ -79,7 +91,12 @@ export default function Editor({
         }
         out.push(m);
       }
-      if (alive) setMetrics(out);
+      if (alive) {
+        setMetrics(out);
+        setBaseline(
+          snapshotOf({ vaultId, title, url, tags, signinMethod, ssoItemId, username, password, totp, secrets, notes, metrics: out })
+        );
+      }
     })();
     return () => {
       alive = false;
@@ -103,6 +120,16 @@ export default function Editor({
       clearInterval(iv);
     };
   }, [totp]);
+
+  const dirty =
+    baseline !== null &&
+    snapshotOf({ vaultId, title, url, tags, signinMethod, ssoItemId, username, password, totp, secrets, notes, metrics }) !==
+      baseline;
+
+  function goBack() {
+    if (dirty) return setConfirmLeave(true);
+    onBack();
+  }
 
   function setMetric(i, patch) {
     setMetrics((cur) => cur.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
@@ -167,9 +194,17 @@ export default function Editor({
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn icon" onClick={onBack}><Icon name="back" /></button>
+        <button className="btn icon" onClick={goBack}><Icon name="back" /></button>
         <h2>{entry ? 'Edit entry' : 'Add entry'}</h2>
       </header>
+      {confirmLeave && (
+        <div className="unsaved" role="alert">
+          <span>You have unsaved changes.</span>
+          <button className="btn small" onClick={save}>Save</button>
+          <button className="btn small" onClick={onBack}>Discard changes</button>
+          <button className="btn small" onClick={() => setConfirmLeave(false)}>Keep editing</button>
+        </div>
+      )}
 
       <label>Who has access</label>
       <select
