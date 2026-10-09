@@ -1191,6 +1191,59 @@ function requestSummary(req, ctx) {
   return lines.join('\n');
 }
 
+// PostgREST skips rows the permission rules block without an error, so ask
+// for the updated row back and treat "nothing updated" as a failure.
+async function patchItemOrFail(itemId, body) {
+  const rows = await api.rest(`/items?id=eq.${itemId}&select=id`, {
+    method: 'PATCH',
+    body,
+    prefer: 'return=representation',
+  });
+  if (!rows || rows.length === 0) {
+    throw new Error("Couldn't save: you have view-only access to this tool's vault. Ask one of its editors.");
+  }
+}
+
+// Payment requests notify other people (summary in WhatsApp, payment-guide
+// window), so creating / paying / cancelling one is stored immediately
+// instead of waiting for the editor's Save. Only the payment fields are
+// written; any other unsaved edits in the form stay unsaved.
+async function persistPayments(prevReqs, prevTopups) {
+  const entry = state.items.find((e) => e.id === state.editingId);
+  try {
+    if (!entry) throw new Error('Save the tool first, then add payment requests.');
+    const data = {
+      ...entry.data,
+      paymentLink: $('f-payment-link').value.trim(), // the payer's guide opens on this page
+      paymentRequests: state.editPayReqs,
+      topups: state.editTopups,
+      updatedAt: new Date().toISOString(),
+    };
+    const { iv, ct } = await encryptJson(state.vaultKeys.get(entry.vault_id), data);
+    await patchItemOrFail(entry.id, { iv, enc_data: ct });
+    entry.data = data;
+    api.logEvent('item.update', { item_id: entry.id, vault_id: entry.vault_id });
+  } catch (err) {
+    state.editPayReqs = prevReqs;
+    state.editTopups = prevTopups;
+    renderPayReqList();
+    renderTopupList();
+    toast(err.message);
+    return false;
+  }
+  // The stored payments now match the form, so they no longer count as unsaved.
+  if (editBaseline && editBaseline !== DRAFT_BASELINE) {
+    const b = JSON.parse(editBaseline);
+    b[0][EDIT_FIELDS.indexOf('f-payment-link')] = $('f-payment-link').value;
+    b[2] = state.editPayReqs;
+    b[3] = state.editTopups;
+    editBaseline = JSON.stringify(b);
+  }
+  updatePendingPayHosts();
+  renderList();
+  return true;
+}
+
 function renderPayReqList() {
   const list = $('payreq-list');
   list.innerHTML = '';
@@ -1211,24 +1264,31 @@ function renderPayReqList() {
       })
     );
     row.appendChild(
-      actionBtn('check', 'Mark as paid (moves to payment history)', () => {
-        state.editTopups.push({
-          date: new Date().toISOString().slice(0, 10),
-          amount: req.amount,
-          currency: req.currency,
-          method: '',
-          frequency: 'topup',
-        });
+      actionBtn('check', 'Mark as paid (moves to payment history)', async () => {
+        const prevReqs = state.editPayReqs;
+        const prevTopups = state.editTopups;
+        state.editTopups = [
+          ...state.editTopups,
+          {
+            date: new Date().toISOString().slice(0, 10),
+            amount: req.amount,
+            currency: req.currency,
+            method: '',
+            frequency: 'topup',
+          },
+        ];
         state.editPayReqs = state.editPayReqs.filter((r) => r !== req);
         renderPayReqList();
         renderTopupList();
-        toast('Moved to payment history - press Save to store it');
+        if (await persistPayments(prevReqs, prevTopups)) toast('Marked as paid - moved to payment history');
       })
     );
     row.appendChild(
-      actionBtn('trash', 'Cancel this request', () => {
+      actionBtn('trash', 'Cancel this request', async () => {
+        const prevReqs = state.editPayReqs;
         state.editPayReqs = state.editPayReqs.filter((r) => r !== req);
         renderPayReqList();
+        if (await persistPayments(prevReqs, state.editTopups)) toast('Payment request cancelled');
       })
     );
     list.appendChild(row);
@@ -1246,11 +1306,17 @@ $('btn-payreq-add').addEventListener('click', async () => {
     requestedBy: state.profile?.display_name || state.profile?.email || 'unknown',
     status: 'pending',
   };
-  state.editPayReqs.push(req);
-  $('pr-amount').value = '';
+  const btn = $('btn-payreq-add');
+  btn.disabled = true;
+  const prevReqs = state.editPayReqs;
+  state.editPayReqs = [...state.editPayReqs, req];
   renderPayReqList();
+  const saved = await persistPayments(prevReqs, state.editTopups);
+  btn.disabled = false;
+  if (!saved) return; // nothing copied, so nothing gets sent for an unsaved request
+  $('pr-amount').value = '';
   await navigator.clipboard.writeText(requestSummary(req, summaryContext()));
-  toast('Request added & summary copied - press Save to store it');
+  toast('Payment request saved & summary copied - paste it in WhatsApp');
 });
 
 $('btn-topup-add').addEventListener('click', () => {
