@@ -672,16 +672,32 @@ function renderList() {
     li.className = 'entry';
     const expanded = state.expandedId === entry.id;
 
-    // Collapsed header: avatar + name + status badges + chevron
+    // Collapsed header: avatar + name + status badges + chevron. It acts as
+    // a button (Tab to reach, Enter/Space to toggle) for keyboard and
+    // screen-reader users; focus stays on it across the re-render.
     const head = document.createElement('div');
     head.className = 'entry-head' + (expanded ? ' open' : '');
-    head.addEventListener('click', () => {
+    head.tabIndex = 0;
+    head.setAttribute('role', 'button');
+    head.setAttribute('aria-expanded', String(expanded));
+    head.dataset.id = entry.id;
+    const toggle = () => {
       state.expandedId = expanded ? null : entry.id;
+      const hadFocus = document.activeElement === head;
       renderList();
+      if (hadFocus) list.querySelector(`.entry-head[data-id="${entry.id}"]`)?.focus();
+    };
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggle();
+      }
     });
 
     const avatar = document.createElement('div');
     avatar.className = 'entry-avatar';
+    avatar.setAttribute('aria-hidden', 'true'); // so the row reads as its name, not "A"
     avatar.textContent = (entry.data.title || '?')[0];
 
     const info = document.createElement('div');
@@ -702,6 +718,7 @@ function renderList() {
 
     const chev = document.createElement('span');
     chev.className = 'chev' + (expanded ? ' open' : '');
+    chev.setAttribute('aria-hidden', 'true');
 
     // Badges go on their own line under the name so they can never squeeze
     // the name itself (a row with three badges used to show just "P").

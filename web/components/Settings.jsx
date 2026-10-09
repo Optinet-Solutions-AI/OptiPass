@@ -55,7 +55,7 @@ export default function Settings({
   return (
     <div className="screen" style={{ maxWidth: 520 }}>
       <header className="topbar">
-        <button className="btn icon" onClick={onBack}><Icon name="back" /></button>
+        <button className="btn icon" title="Back" aria-label="Back" onClick={onBack}><Icon name="back" /></button>
         <h2>Settings</h2>
       </header>
 
@@ -63,7 +63,7 @@ export default function Settings({
         <h3>Account</h3>
         <p className="muted">Signed in as {profile?.email} ({profile?.role?.replace('_', ' ')})</p>
         <div className="row">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" aria-label="Display name" />
           <button
             className="btn"
             onClick={async () => {
@@ -79,8 +79,8 @@ export default function Settings({
       <section>
         <h3>Appearance</h3>
         <div className="row">
-          <span className="muted" style={{ flex: 1 }}>Theme</span>
-          <select value={settings.theme || 'light'} onChange={(e) => setTheme(e.target.value)}>
+          <label className="inline muted" htmlFor="set-theme" style={{ flex: 1, margin: 0, color: 'var(--muted)' }}>Theme</label>
+          <select id="set-theme" value={settings.theme || 'light'} onChange={(e) => setTheme(e.target.value)}>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
@@ -118,9 +118,9 @@ export default function Settings({
       <section>
         <h3>Change master password</h3>
         <div className="stack">
-          <input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} placeholder="Current master password" autoComplete="off" />
-          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New master password" autoComplete="off" />
-          <input type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder="Confirm new master password" autoComplete="off" />
+          <input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} placeholder="Current master password" aria-label="Current master password" autoComplete="off" />
+          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New master password" aria-label="New master password" autoComplete="off" />
+          <input type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder="Confirm new master password" aria-label="Confirm new master password" autoComplete="off" />
         </div>
         {msg && <div className={`error${msg.ok ? ' ok' : ''}`}>{msg.text}</div>}
         <button className="btn full" disabled={busy} onClick={changeMaster}>

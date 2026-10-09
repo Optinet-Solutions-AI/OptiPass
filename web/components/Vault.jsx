@@ -57,7 +57,7 @@ export default function Vault({
   return (
     <div className="screen">
       <header className="topbar">
-        <input type="search" placeholder="Search vault..." value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input type="search" aria-label="Search tools" placeholder="Search vault..." value={query} onChange={(e) => setQuery(e.target.value)} />
         <button className="btn icon" title="Add tool" onClick={onAdd}><Icon name="plus" /></button>
         <button className="btn icon" title="Settings" onClick={onSettings}><Icon name="cog" /></button>
         <button className="btn icon" title="Lock vault" onClick={onLock}><Icon name="lock" /></button>
@@ -65,7 +65,7 @@ export default function Vault({
       {(allTags.length > 0 || isAdmin) && (
         <div className="topbar">
           {allTags.length > 0 && (
-            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+            <select aria-label="Filter by tag" value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
               <option value="all">All tags</option>
               {allTags.map((t) => (
                 <option key={t} value={t}>{t}</option>

@@ -194,7 +194,7 @@ export default function Editor({
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn icon" onClick={goBack}><Icon name="back" /></button>
+        <button className="btn icon" title="Back" aria-label="Back" onClick={goBack}><Icon name="back" /></button>
         <h2>{entry ? 'Edit tool' : 'Add tool'}</h2>
       </header>
       {confirmLeave && (
@@ -206,8 +206,9 @@ export default function Editor({
         </div>
       )}
 
-      <label>Who has access</label>
+      <label htmlFor="ed-vault">Who has access</label>
       <select
+        id="ed-vault"
         value={vaultId}
         onChange={(e) => setVaultId(e.target.value)}
         disabled={!!entry && !!entry.created_by && entry.created_by !== uid}
@@ -224,22 +225,22 @@ export default function Editor({
         ))}
       </select>
 
-      <label>Tool name</label>
-      <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. OpenAI" />
-      <label>Tool link</label>
-      <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://platform.openai.com" />
-      <label>Tags (comma-separated)</label>
-      <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Project Phoenix, AI tools" autoComplete="off" />
+      <label htmlFor="ed-title">Tool name</label>
+      <input id="ed-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. OpenAI" />
+      <label htmlFor="ed-url">Tool link</label>
+      <input id="ed-url" type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://platform.openai.com" />
+      <label htmlFor="ed-tags">Tags (comma-separated)</label>
+      <input id="ed-tags" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Project Phoenix, AI tools" autoComplete="off" />
 
-      <label>Sign-in method</label>
-      <select value={signinMethod} onChange={(e) => setSigninMethod(e.target.value)}>
+      <label htmlFor="ed-signin">Sign-in method</label>
+      <select id="ed-signin" value={signinMethod} onChange={(e) => setSigninMethod(e.target.value)}>
         <option value="password">Username &amp; password</option>
         <option value="oauth">OAuth (Google, GitHub, ...)</option>
       </select>
       {signinMethod !== 'password' && (
         <>
-          <label>Signs in with which account</label>
-          <select value={ssoItemId} onChange={(e) => setSsoItemId(e.target.value)}>
+          <label htmlFor="ed-sso">Signs in with which account</label>
+          <select id="ed-sso" value={ssoItemId} onChange={(e) => setSsoItemId(e.target.value)}>
             <option value="">(pick the tool for that account)</option>
             {(items || [])
               .filter((e) => e.id !== entry?.id)
@@ -254,11 +255,11 @@ export default function Editor({
       )}
       {signinMethod === 'password' && (
         <>
-          <label>Username / email</label>
-          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
-          <label>Password</label>
+          <label htmlFor="ed-username">Username / email</label>
+          <input id="ed-username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+          <label htmlFor="ed-password">Password</label>
           <div className="row">
-            <input type={reveal ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
+            <input id="ed-password" type={reveal ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
             <button className="btn icon" title="Show / hide" onClick={() => setReveal(!reveal)}><Icon name="eye" /></button>
             <button
               className="btn icon"
@@ -272,15 +273,15 @@ export default function Editor({
             </button>
           </div>
           <div className="row muted" style={{ fontSize: 12 }}>
-            <span>Length</span>
-            <input type="number" min="8" max="64" value={genLen} onChange={(e) => setGenLen(parseInt(e.target.value, 10) || 20)} />
+            <label className="inline" htmlFor="ed-genlen" style={{ margin: 0, color: 'inherit', fontSize: 'inherit' }}>Length</label>
+            <input id="ed-genlen" type="number" min="8" max="64" value={genLen} onChange={(e) => setGenLen(parseInt(e.target.value, 10) || 20)} />
             <label className="checkbox"><input type="checkbox" checked={genSym} onChange={(e) => setGenSym(e.target.checked)} /> Symbols</label>
           </div>
         </>
       )}
 
-      <label>2FA one-time passwords (optional)</label>
-      <input type="text" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="Paste the site's 2FA setup key or otpauth:// link" autoComplete="off" />
+      <label htmlFor="ed-totp">2FA one-time passwords (optional)</label>
+      <input id="ed-totp" type="text" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="Paste the site's 2FA setup key or otpauth:// link" autoComplete="off" />
       {totpPreview && (
         <div className="totp-preview">
           {totpPreview.invalid ? (
@@ -301,8 +302,8 @@ export default function Editor({
       <div className="stack">
         {secrets.map((s, i) => (
           <div className="row" style={{ margin: 0 }} key={i}>
-            <input type="text" value={s.label} placeholder="Name, e.g. Private API key" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
-            <input type="password" value={s.value} placeholder="Secret value" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
+            <input type="text" aria-label="Secret name" value={s.label} placeholder="Name, e.g. Private API key" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+            <input type="password" aria-label="Secret value" value={s.value} placeholder="Secret value" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
             <button className="btn icon" title="Copy secret" onClick={async () => { await navigator.clipboard.writeText(s.value || ''); showToast('Secret copied'); }}><Icon name="key" /></button>
             <button className="btn icon" title="Remove" onClick={() => setSecrets(secrets.filter((_, j) => j !== i))}><Icon name="trash" /></button>
           </div>
@@ -346,8 +347,8 @@ export default function Editor({
           ) : (
             <div className="metric-block" key={m.id || i}>
               <div className="row" style={{ marginTop: 0 }}>
-                <input type="text" value={m.label} placeholder="Metric name, e.g. Bandwidth" onChange={(e) => setMetric(i, { label: e.target.value })} />
-                <select value={m.kind} onChange={(e) => setMetric(i, { kind: e.target.value })}>
+                <input type="text" aria-label="Metric name" value={m.label} placeholder="Metric name, e.g. Bandwidth" onChange={(e) => setMetric(i, { label: e.target.value })} />
+                <select aria-label="Where the number comes from" value={m.kind} onChange={(e) => setMetric(i, { kind: e.target.value })}>
                   <option value="page">Dashboard page</option>
                   <option value="api">Tool&apos;s API</option>
                 </select>
@@ -355,22 +356,22 @@ export default function Editor({
               </div>
               {m.kind === 'page' ? (
                 <>
-                  <label>Dashboard page (where the number is shown)</label>
-                  <input type="text" value={m.url} onChange={(e) => setMetric(i, { url: e.target.value })} placeholder="https://tool.example.com/dashboard" />
-                  <label>Find the number by a nearby word</label>
-                  <input type="text" value={m.keyword} onChange={(e) => setMetric(i, { keyword: e.target.value })} placeholder='e.g. "bandwidth"' />
+                  <label htmlFor={`ed-m${i}-url`}>Dashboard page (where the number is shown)</label>
+                  <input id={`ed-m${i}-url`} type="text" value={m.url} onChange={(e) => setMetric(i, { url: e.target.value })} placeholder="https://tool.example.com/dashboard" />
+                  <label htmlFor={`ed-m${i}-keyword`}>Find the number by a nearby word</label>
+                  <input id={`ed-m${i}-keyword`} type="text" value={m.keyword} onChange={(e) => setMetric(i, { keyword: e.target.value })} placeholder='e.g. "bandwidth"' />
                   <p className="muted" style={{ marginTop: 6 }}>Click-to-pick and page capture run in the Chrome extension; the web app shows the readings.</p>
                 </>
               ) : (
                 <>
-                  <label>API endpoint that returns the number</label>
-                  <input type="text" value={m.apiUrl} onChange={(e) => setMetric(i, { apiUrl: e.target.value })} placeholder="https://tool.example.com/api/balance" autoComplete="off" />
-                  <label>API key (stored end-to-end encrypted)</label>
-                  <input type="password" value={m.apiKey} onChange={(e) => setMetric(i, { apiKey: e.target.value })} autoComplete="off" />
-                  <label>Response field that holds the number</label>
-                  <input type="text" value={m.apiPath} onChange={(e) => setMetric(i, { apiPath: e.target.value })} placeholder="e.g. remainingBandwidth or 0.balance" autoComplete="off" />
-                  <label>Keep the key in vault</label>
-                  <select value={m.apiVaultId} onChange={(e) => setMetric(i, { apiVaultId: e.target.value })}>
+                  <label htmlFor={`ed-m${i}-apiurl`}>API endpoint that returns the number</label>
+                  <input id={`ed-m${i}-apiurl`} type="text" value={m.apiUrl} onChange={(e) => setMetric(i, { apiUrl: e.target.value })} placeholder="https://tool.example.com/api/balance" autoComplete="off" />
+                  <label htmlFor={`ed-m${i}-apikey`}>API key (stored end-to-end encrypted)</label>
+                  <input id={`ed-m${i}-apikey`} type="password" value={m.apiKey} onChange={(e) => setMetric(i, { apiKey: e.target.value })} autoComplete="off" />
+                  <label htmlFor={`ed-m${i}-apipath`}>Response field that holds the number</label>
+                  <input id={`ed-m${i}-apipath`} type="text" value={m.apiPath} onChange={(e) => setMetric(i, { apiPath: e.target.value })} placeholder="e.g. remainingBandwidth or 0.balance" autoComplete="off" />
+                  <label htmlFor={`ed-m${i}-vault`}>Keep the key in vault</label>
+                  <select id={`ed-m${i}-vault`} value={m.apiVaultId} onChange={(e) => setMetric(i, { apiVaultId: e.target.value })}>
                     {memberships.map((mem) => (
                       <option key={mem.vault_id} value={mem.vault_id}>{mem.vaults.name}</option>
                     ))}
@@ -380,12 +381,12 @@ export default function Editor({
               )}
               <div className="row">
                 <div style={{ flex: 1 }}>
-                  <label>Unit</label>
-                  <input type="text" value={m.unit} onChange={(e) => setMetric(i, { unit: e.target.value })} placeholder="credits / GB / USD" />
+                  <label htmlFor={`ed-m${i}-unit`}>Unit</label>
+                  <input id={`ed-m${i}-unit`} type="text" value={m.unit} onChange={(e) => setMetric(i, { unit: e.target.value })} placeholder="credits / GB / USD" />
                 </div>
                 <div>
-                  <label>Warn below</label>
-                  <input type="number" min="0" value={m.threshold} onChange={(e) => setMetric(i, { threshold: e.target.value })} />
+                  <label htmlFor={`ed-m${i}-threshold`}>Warn below</label>
+                  <input id={`ed-m${i}-threshold`} type="number" min="0" value={m.threshold} onChange={(e) => setMetric(i, { threshold: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -393,8 +394,8 @@ export default function Editor({
         )}
       </div>
 
-      <label>Notes</label>
-      <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <label htmlFor="ed-notes">Notes</label>
+      <textarea id="ed-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       {error && <div className="error">{error}</div>}
       <div className="row" style={{ marginTop: 14 }}>

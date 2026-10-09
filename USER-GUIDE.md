@@ -88,7 +88,8 @@ extension:
   - `LOW` (red) — a credit/usage metric fell below its threshold
   - `payment pending` — someone requested a top-up
   - `via OAuth` — signs in through Google/GitHub etc.
-- **Click a row to expand it**: account, action buttons, and credit readings.
+- **Click a row to expand it** (or press Tab to reach it and Enter to open it):
+  account, action buttons, and credit readings.
 - **Pagination** at 8 tools per page — but really, just search.
 - Top-row icons: **+** add tool · **↗ open in window** (a window that stays
   open while you browse — great for long edits) · **🔒 lock**.

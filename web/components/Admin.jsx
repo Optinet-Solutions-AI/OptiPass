@@ -155,7 +155,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="btn icon" onClick={onBack}><Icon name="back" /></button>
+        <button className="btn icon" title="Back" aria-label="Back" onClick={onBack}><Icon name="back" /></button>
         <h2>Team administration</h2>
       </header>
 
@@ -220,8 +220,8 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
         <h3>Invite by email</h3>
         <p className="muted">Invite copies a signup link to send them. They're active the moment they sign up. Sign-ups without an invite are rejected.</p>
         <div className="row">
-          <input type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="teammate@optinetsolutions.com" />
-          <select value={invRole} onChange={(e) => setInvRole(e.target.value)}>
+          <input type="email" aria-label="Email to invite" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="teammate@optinetsolutions.com" />
+          <select aria-label="Role for the invited person" value={invRole} onChange={(e) => setInvRole(e.target.value)}>
             <option value="member">Member</option>
             <option value="admin">Admin</option>
           </select>
@@ -258,7 +258,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
       <section>
         <h3>Team vaults</h3>
         <div className="row">
-          <input type="text" value={newVault} onChange={(e) => setNewVault(e.target.value)} placeholder="New team vault name, e.g. AI Team" />
+          <input type="text" value={newVault} onChange={(e) => setNewVault(e.target.value)} placeholder="New team vault name, e.g. AI Team" aria-label="New team vault name" />
           <button className="btn" onClick={createVault}>Create</button>
         </div>
       </section>
@@ -269,7 +269,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
           You can manage the team vaults where you are a Manager. <strong>Manager</strong>: add/remove members, delete
           the vault. <strong>Editor</strong>: add and edit tools. <strong>Viewer</strong>: see and copy only.
         </p>
-        <select value={mvVault} onChange={(e) => setMvVault(e.target.value)}>
+        <select aria-label="Team vault" value={mvVault} onChange={(e) => setMvVault(e.target.value)}>
           {managed.map((m) => (
             <option key={m.vault_id} value={m.vault_id}>{m.vaults.name}</option>
           ))}
@@ -294,7 +294,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
           ))}
         </div>
         <div className="row">
-          <select value={mvUser} onChange={(e) => setMvUser(e.target.value)} style={{ flex: 1 }}>
+          <select aria-label="Person to add" value={mvUser} onChange={(e) => setMvUser(e.target.value)} style={{ flex: 1 }}>
             <option value="">{candidates.length ? 'Add a person...' : 'No one else can be added yet'}</option>
             {candidates.map((p) => (
               <option key={p.id} value={p.id}>{p.display_name || p.email}</option>
@@ -307,7 +307,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
               </optgroup>
             )}
           </select>
-          <select value={mvRole} onChange={(e) => setMvRole(e.target.value)}>
+          <select aria-label="Their role in this vault" value={mvRole} onChange={(e) => setMvRole(e.target.value)}>
             <option value="editor">Editor</option>
             <option value="viewer">Viewer</option>
             <option value="manager">Manager</option>

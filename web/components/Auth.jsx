@@ -189,6 +189,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
           onChange={(e) => setPw(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submitUnlock()}
           placeholder="Master password"
+          aria-label="Master password"
           autoComplete="off"
           autoFocus
         />
@@ -217,8 +218,9 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       />
       {signup && (
         <>
-          <label>Invite code (optional)</label>
+          <label htmlFor="auth-invite">Invite code (optional)</label>
           <input
+            id="auth-invite"
             type="text"
             value={invite}
             onChange={(e) => setInvite(e.target.value)}
@@ -229,8 +231,9 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
           />
         </>
       )}
-      <label>Email</label>
+      <label htmlFor="auth-email">Email</label>
       <input
+        id="auth-email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -239,8 +242,9 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
         readOnly={signup && fromLink}
         style={signup && fromLink ? { opacity: 0.7 } : undefined}
       />
-      <label>{signup ? 'Create your password' : 'Account password'}</label>
+      <label htmlFor="auth-pw">{signup ? 'Create your password' : 'Account password'}</label>
       <input
+        id="auth-pw"
         type="password"
         value={pw}
         onChange={(e) => setPw(e.target.value)}
@@ -249,8 +253,8 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       />
       {signup && (
         <>
-          <label>Confirm password</label>
-          <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+          <label htmlFor="auth-pw2">Confirm password</label>
+          <input id="auth-pw2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
         </>
       )}
       {error && <div className={`error${ok ? ' ok' : ''}`}>{error}</div>}
