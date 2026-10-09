@@ -460,6 +460,14 @@ textarea {
 .empty {
   text-align: center;
   padding: 56px 0;
+  overflow-wrap: anywhere; /* long search text */
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 /* credit box */

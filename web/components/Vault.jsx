@@ -78,8 +78,26 @@ export default function Vault({
 
       {entries.length === 0 ? (
         <div className="empty">
-          <p>No tools{q ? ' match' : ' yet'}.</p>
-          <p className="muted">Click + to add a tool.</p>
+          {items.length === 0 ? (
+            <>
+              <p>No tools yet.</p>
+              <p className="muted">Click + to add your first tool.</p>
+            </>
+          ) : (
+            // Nothing matches the search / tag: say so and offer the way back.
+            <>
+              <p>
+                {query.trim()
+                  ? `No tools match "${query.trim()}"${tagFilter !== 'all' ? ` with the tag "${tagFilter}"` : ''}.`
+                  : `No tools have the tag "${tagFilter}".`}
+              </p>
+              <p className="muted">Search looks at tool names, usernames, links and tags.</p>
+              <div className="empty-actions">
+                {query.trim() && <button className="btn small" onClick={() => setQuery('')}>Clear search</button>}
+                {tagFilter !== 'all' && <button className="btn small" onClick={() => setTagFilter('all')}>Show all tags</button>}
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <ul className="entry-list">

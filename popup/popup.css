@@ -895,6 +895,14 @@ textarea {
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 6px;
+  overflow-wrap: anywhere; /* long search text */
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 /* ---------- people rows (admin) ---------- */

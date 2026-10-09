@@ -663,6 +663,7 @@ function renderList() {
   }
 
   $('empty-state').classList.toggle('hidden', entries.length > 0);
+  if (!entries.length) renderEmptyState(tagFilter);
 
   const pages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
   state.page = Math.min(state.page, pages - 1);
@@ -792,6 +793,27 @@ function renderList() {
   updateLowBadge();
 }
 
+// An empty list says *why*: nothing saved yet, or nothing matches the
+// search / tag filter (with a one-click way back to the full list).
+function renderEmptyState(tagFilter) {
+  const raw = $('search').value.trim();
+  const tagged = tagFilter !== 'all';
+  const filtered = state.items.length > 0;
+  let title = 'No tools yet.';
+  if (filtered && raw) title = `No tools match "${raw}"${tagged ? ` with the tag "${tagFilter}"` : ''}.`;
+  else if (filtered) title = `No tools have the tag "${tagFilter}".`;
+  $('empty-title').textContent = title;
+  $('empty-icon').innerHTML = filtered
+    ? '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>' // search
+    : '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'; // lock
+  $('empty-hint').innerHTML = filtered
+    ? 'Search looks at tool names, usernames, links and tags.'
+    : 'Click <strong>+</strong> to add your first tool.';
+  $('empty-actions').classList.toggle('hidden', !filtered);
+  $('btn-empty-clear').classList.toggle('hidden', !raw);
+  $('btn-empty-alltags').classList.toggle('hidden', !tagged);
+}
+
 function makeBadge(text, variant) {
   const b = document.createElement('span');
   b.className = `badge${variant ? ` ${variant}` : ''}`;
@@ -841,6 +863,15 @@ function resetAndRender() {
 
 $('search').addEventListener('input', resetAndRender);
 $('tag-filter').addEventListener('change', resetAndRender);
+$('btn-empty-clear').addEventListener('click', () => {
+  $('search').value = '';
+  resetAndRender();
+  $('search').focus();
+});
+$('btn-empty-alltags').addEventListener('click', () => {
+  $('tag-filter').value = 'all';
+  resetAndRender();
+});
 
 // Label filter options come from the labels present on visible entries.
 function populateTagFilter() {
