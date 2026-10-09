@@ -13,8 +13,8 @@
 -- Access model:
 --   * global roles: super_admin > admin > member
 --   * the FIRST user to sign up becomes super_admin automatically
---   * anyone else who signs up uninvited lands in status 'pending'
---     and can do nothing until an admin approves them
+--   * everyone else needs an invite: uninvited sign-ups are rejected
+--     (handle_new_user raises 'An invite is required to join')
 --   * per-vault roles: manager > editor > viewer
 -- ============================================================
 
@@ -123,7 +123,7 @@ $$ select created_by from vaults where id = v; $$;
 -- ============ SIGNUP GATING ============
 -- First user ever -> active super_admin.
 -- Invited email     -> active, with the invited role.
--- Anyone else       -> status 'pending' (no access until approved).
+-- Anyone else       -> rejected ('An invite is required to join').
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as

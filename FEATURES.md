@@ -54,7 +54,7 @@ Legend: ✅ **have it** · 🟡 **easy add** (days) · 🔵 **bigger effort** (w
 | Feature | Status | Notes |
 |---|---|---|
 | Email + password sign-in | ✅ | Supabase Auth |
-| Invite-only / admin approval to join | ✅ | Invited = instant; uninvited = pending approval |
+| Invite-only sign-up | ✅ | Invited = active instantly (signup link); uninvited sign-ups are rejected |
 | Roles: super admin / admin / member | ✅ | First signup = super admin |
 | Per-vault permissions (manager/editor/viewer) | ✅ | |
 | Disable (suspend) users | ✅ | Cuts all server access instantly |
@@ -70,7 +70,8 @@ Legend: ✅ **have it** · 🟡 **easy add** (days) · 🔵 **bigger effort** (w
 |---|---|---|
 | Sync across devices/machines | ✅ | Sign in anywhere the extension is installed |
 | Share single item via expiring link (external) | 🔵 | Needs a small public web endpoint |
-| Web app / desktop app / mobile app | 🔵/⛔ | We're Chrome-extension-only today |
+| Web app | ✅ | opti-pass.vercel.app — vault, editor, admin; no autofill or payments |
+| Desktop app / mobile app | ⛔ | The web app covers other devices |
 | Offline access (cached, read-only) | 🔵 | |
 | Import from CSV (Chrome, LastPass, 1Password) | 🟡 | High value for migration day one |
 | Encrypted export/backup | 🟡 | v1 had it; re-add on top of Supabase |
@@ -80,5 +81,5 @@ Legend: ✅ **have it** · 🟡 **easy add** (days) · 🔵 **bigger effort** (w
 1. **CSV import** — you'll want this the day the team migrates existing passwords
 2. **Secure notes + credit cards** — cheap, immediately useful
 3. **Watchtower basics** — weak/reused report + HaveIBeenPwned breach check
-4. **TOTP codes** — lets the team keep 2FA secrets in shared vaults
+4. ~~**TOTP codes**~~ — shipped (see Security above)
 5. **Clipboard auto-clear + favorites** — small quality-of-life wins

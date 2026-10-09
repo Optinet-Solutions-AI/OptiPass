@@ -43,10 +43,7 @@ One person (the future **super admin**) does steps 1–4 once. Everyone else jus
 
 Each teammate needs the extension folder (share it, or later publish privately on the Chrome Web Store) with the same `lib/config.js`.
 
-Two ways in, both admin-controlled:
-
-- **Invite (recommended):** Admin → *Invite by email*. When that person signs up, they're active immediately.
-- **Approve:** If someone signs up uninvited, they sit in *pending* until an admin approves them in the Admin screen.
+Sign-up is **invite-only**: Admin → *Invite by email* copies a signup link to send the person. When they sign up (with the link, or in the extension with the invited email) they're active immediately. Sign-ups without an invite are rejected by the database — there is no pending/approval queue.
 
 Each user sets their **own** master password — nobody, including admins, can read anyone else's personal vault.
 

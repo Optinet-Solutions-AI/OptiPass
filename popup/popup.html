@@ -42,7 +42,7 @@
     <div id="login-pw2-wrap" class="hidden">
       <label for="login-pw2">Confirm account password</label>
       <input type="password" id="login-pw2" autocomplete="new-password" />
-      <label for="login-invite">Invite code (required to join)</label>
+      <label for="login-invite">Invite code (not needed if you use the invited email)</label>
       <input type="text" id="login-invite" autocomplete="off" placeholder="e.g. 4f9a1c2b7d3e5a08" />
     </div>
     <div id="login-error" class="error hidden"></div>
@@ -454,7 +454,7 @@
       <h3>FAQ</h3>
       <p class="muted"><strong>Forgot your master password?</strong> It cannot be recovered. An admin resets your keys (SETUP.md explains how); your Personal vault is lost but team vaults come back when a vault manager re-adds you.</p>
       <p class="muted"><strong>Forgot your PIN?</strong> Click "Use master password instead" - after 5 wrong PIN tries it resets automatically.</p>
-      <p class="muted"><strong>New teammate?</strong> Admin screen &gt; Invite - send them the invite code; they install OptiPass, sign up with the code, and set their own passwords.</p>
+      <p class="muted"><strong>New teammate?</strong> Admin screen &gt; Invite by email copies a signup link - send it to them. It opens OptiPass with their invite and email filled in, and they choose their own passwords.</p>
       <p class="muted"><strong>Updating?</strong> Updates apply automatically. To force one: Settings &gt; Check for updates.</p>
     </section>
 
@@ -475,7 +475,7 @@
 
     <section>
       <h3>Invite by email</h3>
-      <p class="muted">Invited emails become active the moment they sign up. Anyone who signs up uninvited waits for approval above.</p>
+      <p class="muted">Invite copies a signup link to send them. They're active the moment they sign up. Sign-ups without an invite are rejected.</p>
       <div class="row">
         <input type="email" id="inv-email" placeholder="teammate@optinetsolutions.com" />
         <select id="inv-role">

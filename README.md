@@ -8,7 +8,7 @@ Optinet Solutions' team password manager — a Chrome (Manifest V3) extension ba
 
 ## What it does
 
-- **Email sign-in** (Supabase Auth) — access only for people an admin invited or approved
+- **Email sign-in** (Supabase Auth) — access only for people an admin invited
 - **Roles:** super admin (first signup) → admin → member; per-vault manager/editor/viewer
 - **Personal vault** for every user (private even from admins) + **shared team vaults**
 - **End-to-end encryption** — master password → PBKDF2 (600k) → AES-256-GCM; team sharing via RSA-wrapped vault keys; master password never leaves the device and is unrecoverable by design
@@ -39,13 +39,13 @@ Adding someone to a vault = encrypting the vault key with *their* public key. On
 manifest.json         Extension manifest (MV3)
 background.js         Service worker - auto-lock enforcement
 supabase/schema.sql   Full database schema: tables, roles, RLS policies
-lib/config.js         Your Supabase URL + anon key (fill in)
+lib/config.js         Supabase URL + anon key for Optinet's project (+ web app URL)
 lib/api.js            Thin Supabase client (auth + REST, token refresh)
 lib/crypto.js         Web Crypto: PBKDF2, AES-GCM, RSA key wrapping, generator
 lib/keychain.js       Lock/unlock state, master password handling, settings
 popup/                UI - login, unlock, vaults, editor, settings, admin
 icons/                Extension icons
-backup-v1-local/      The previous local-only version (safe to delete)
+web/                  The web app (Next.js) - same login and data, deployed on Vercel
 ```
 
 ## Development notes
@@ -53,3 +53,17 @@ backup-v1-local/      The previous local-only version (safe to delete)
 - No build step, no dependencies — plain ES modules
 - Syntax check: `node --check` on any `lib/*.js` (as `.mjs`)
 - Crypto flows have a Node test exercising the full share/unlock cycle
+
+## Releasing a change
+
+1. Bump `version` in `manifest.json` (installed extensions compare it with
+   `main` to offer the update) and start the commit message with it, e.g.
+   `v2.16.13: ...`.
+2. **Docs check:** if the change alters what people see or do, update the
+   matching text in `USER-GUIDE.md`, `SETUP.md`, `FEATURES.md`, this README and
+   the in-app Help (`popup/popup.html`, Settings > Help) in the same commit.
+   Screens and docs must never describe behaviour that doesn't exist.
+3. Check: `node --check` on the extension scripts, `npx next build` in `web/`.
+4. Push to `main`: Vercel deploys the web app; extensions see the new version.
+   Schema changes ship as `supabase/migration-00N-*.sql` (run by hand in the
+   Supabase SQL Editor) and are folded into `supabase/schema.sql`.

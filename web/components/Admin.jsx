@@ -218,7 +218,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
 
       <section>
         <h3>Invite by email</h3>
-        <p className="muted">Send the copied invite code to your teammate - they sign up with it and are active instantly.</p>
+        <p className="muted">Invite copies a signup link to send them. They're active the moment they sign up. Sign-ups without an invite are rejected.</p>
         <div className="row">
           <input type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="teammate@optinetsolutions.com" />
           <select value={invRole} onChange={(e) => setInvRole(e.target.value)}>

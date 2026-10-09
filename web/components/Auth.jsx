@@ -211,7 +211,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
           signup
             ? fromLink
               ? "You're invited! Add your password to complete signup."
-              : 'Sign up with the invite code your admin sent you.'
+              : 'Sign up with the email your admin invited (or their invite code).'
             : 'Sign in with your team account.'
         }
       />

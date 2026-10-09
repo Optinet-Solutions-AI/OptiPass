@@ -42,11 +42,15 @@ You can force a check in **Settings → Check for updates**. You never reinstall
 
 ## 2. Signing up (first time)
 
-You need an **invite code** from an admin — signups without one are rejected.
+You need an **invite** from an admin — sign-ups without one are rejected.
+The admin sends you a **signup link**: open it and your invite and email are
+already filled in, so you only choose an account password. Or sign up in the
+extension:
 
 1. Click the OptiPass icon → **Need an account? Sign up**
-2. Enter your **email**, choose an **account password** (8+ characters), and
-   paste your **invite code**
+2. Enter the **email that was invited** and choose an **account password**
+   (8+ characters). The **invite code** field is only needed if you sign up
+   with a different email
 3. OptiPass **generates your master password** for you (a 5-word passphrase
    like `coral-window-lemon-storm-pine-42`). **Copy it and save it somewhere
    safe right now** — you'll need it on any new device or Chrome profile,
@@ -76,8 +80,9 @@ You need an **invite code** from an admin — signups without one are rejected.
 
 - **Search** matches tool names, usernames, links, and tags — this is the
   fastest way to anything.
-- **Filters:** the vault dropdown (Personal / teams) and, once you use tags,
-  a tag dropdown next to it.
+- **Filter:** once you use tags, a tag dropdown appears under the search box
+  (there is no vault filter: every tool you can see is in one list, and an
+  expanded tool shows which team vault it's in).
 - **Tool rows are collapsed** — one line with the name and status badges:
   - `this site` — matches the page you're on
   - `LOW` (red) — a credit/usage metric fell below its threshold
@@ -243,13 +248,14 @@ Open **Admin** (the 👥 icon on the main screen — visible to admins only).
 
 ### Inviting a new teammate (step by step)
 1. Admin → **Invite by email** → enter their email and global role
-2. Click **Invite** — the **invite code is copied to your clipboard**
-3. Send them the code (plus the repo link and this guide)
-4. They install OptiPass, sign up with the code, and are active immediately
+2. Click **Invite** — a **signup link is copied to your clipboard** (it's
+   also in the invite list: **Copy link**, or **Copy code** for the code alone)
+3. Send them the link (plus the setup guide for the extension)
+4. They open the link, choose their passwords, and are active immediately
 5. Add them to the team vaults they need (steps above)
 
-Signups **without a valid invite code are rejected** — there is no way in
-without one.
+Sign-ups **without an invite are rejected** — there is no way in without one
+(no "pending approval" queue).
 
 ### Managing people
 - **Disable** cuts someone's server access instantly (re-enable anytime)
@@ -272,8 +278,9 @@ inspect it in Supabase (`audit_log` table) to retrace who changed what, when.
 
 Same login, same data, at the team's Vercel URL. Works everywhere Chrome
 isn't: view and edit tools, copy passwords and live 2FA codes, admin screens,
-API monitor refresh. Extension-only by nature: page autofill, right-click
-fill, the element picker, the PIN, and the toolbar badge.
+API monitor refresh. Extension-only: page autofill, right-click fill, the
+element picker, the PIN, the toolbar badge, and **payments** (requesting a
+payment, the payer's guide, and payment history).
 
 ---
 
