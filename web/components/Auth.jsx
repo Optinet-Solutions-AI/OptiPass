@@ -82,10 +82,13 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
   const [generated, setGenerated] = useState('');
   const [savedIt, setSavedIt] = useState(false);
 
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (screen === 'master-setup') {
       setGenerated(generatePassphrase());
       setSavedIt(false);
+      setCopied(false);
     }
   }, [screen]);
 
@@ -145,16 +148,23 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
             <button
               className="btn grow"
               onClick={async () => {
-                await navigator.clipboard.writeText(generated);
+                try {
+                  await navigator.clipboard.writeText(generated);
+                  setCopied(true);
+                  showToast('Master password copied - store it somewhere safe');
+                } catch {
+                  showToast("Couldn't copy - select the words above and copy them by hand");
+                }
               }}
             >
-              Copy
+              {copied ? 'Copied ✓' : 'Copy'}
             </button>
             <button
               className="btn"
               onClick={() => {
                 setGenerated(generatePassphrase());
                 setSavedIt(false);
+                setCopied(false); // the copied one is no longer the password
               }}
             >
               Generate another

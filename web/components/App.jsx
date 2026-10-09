@@ -579,7 +579,11 @@ export default function App() {
           onBack={backToMain}
         />
       )}
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
     </>
   );
 }
