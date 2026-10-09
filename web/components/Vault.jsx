@@ -112,15 +112,15 @@ export default function Vault({
                     </div>
                   </div>
                   <div className="entry-actions">
-                    <button className="btn icon" title="Copy username" onClick={() => copy(entry.data.username || entry.data.ssoEmail, entry.data.username ? 'Username copied' : 'SSO account email copied')}><Icon name="user" /></button>
+                    <button className="btn act" title={entry.data.username ? 'Copy username' : 'Copy SSO account email'} onClick={() => copy(entry.data.username || entry.data.ssoEmail, entry.data.username ? 'Username copied' : 'SSO account email copied')}><Icon name="copy" /><span>Username</span></button>
                     {entry.data.password && (
-                      <button className="btn icon" title="Copy password" onClick={() => copy(entry.data.password, 'Password copied')}><Icon name="key" /></button>
+                      <button className="btn act" title="Copy password" onClick={() => copy(entry.data.password, 'Password copied')}><Icon name="copy" /><span>Password</span></button>
                     )}
                     {entry.data.totp && (
-                      <button className="btn icon" title="Copy 2FA code" onClick={() => copyTotp(entry)}><Icon name="shield" /></button>
+                      <button className="btn act" title="Copy 2FA code" onClick={() => copyTotp(entry)}><Icon name="copy" /><span>2FA code</span></button>
                     )}
                     {writable && (
-                      <button className="btn icon" title="Edit" onClick={() => onEdit(entry)}><Icon name="pen" /></button>
+                      <button className="btn act" title="Edit" onClick={() => onEdit(entry)}><Icon name="pen" /><span>Edit</span></button>
                     )}
                   </div>
                 </div>

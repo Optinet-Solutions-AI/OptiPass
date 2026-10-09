@@ -355,6 +355,7 @@ textarea {
 
 .entry-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 11px 12px;
@@ -405,26 +406,36 @@ textarea {
   text-overflow: ellipsis;
 }
 
+/* row actions are always visible (no hover needed, works on touch) and sit
+   on their own line under the name, so they never squeeze the name or tags */
 .entry-actions {
   display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.12s;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  gap: 6px;
+  padding-left: 48px;
+  margin-top: -2px;
 }
 
-.entry-row:hover .entry-actions,
-.entry-row:focus-within .entry-actions {
-  opacity: 1;
+/* labelled row action: icon says the kind of action, the word what it acts on */
+.btn.act {
+  padding: 6px 10px;
+  gap: 5px;
+  font-size: 12px;
+  border-radius: 8px;
 }
 
-.entry-actions .btn.icon {
-  width: 30px;
-  height: 30px;
+.btn.act svg {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
 }
 
-.entry-actions .btn.icon svg {
-  width: 14px;
-  height: 14px;
+/* bigger touch targets on phones */
+@media (max-width: 640px) {
+  .btn.act {
+    padding: 8px 12px;
+  }
 }
 
 .badge {

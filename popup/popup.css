@@ -743,17 +743,37 @@ textarea {
 
 .entry-actions {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.entry-actions .btn.icon {
-  width: 28px;
-  height: 28px;
+/* labelled row actions (icon + word); "main" = Fill login */
+.btn.act {
+  padding: 5px 9px;
+  gap: 5px;
+  font-size: 11px;
+  border-radius: 8px;
 }
 
-.entry-actions .btn.icon svg {
-  width: 14px;
-  height: 14px;
+.btn.act svg {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+}
+
+.btn.act.main {
+  background: var(--accent-tint);
+  border-color: transparent;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.btn.act.main svg {
+  color: currentColor;
+}
+
+.btn.act.main:hover {
+  border-color: var(--accent);
 }
 
 .badge {

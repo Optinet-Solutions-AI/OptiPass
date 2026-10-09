@@ -92,12 +92,15 @@ You need an **invite code** from an admin — signups without one are rejected.
 ### Action buttons on an expanded tool
 | Button | Does |
 |---|---|
-| ⬇ | Fill the login form on the current page (also copies the 2FA code if the tool has one) |
-| 👤 | Copy username (or the OAuth account email) |
-| 🔑 | Copy password |
-| 🛡 | Copy the current 2FA code |
-| ↗ | Open the tool's link |
-| ✎ | Edit the tool |
+| **Fill login** | Fill the login form on the current page (also copies the 2FA code if the tool has one) |
+| **Username** | Copy username (or the OAuth account email) |
+| **Password** | Copy password |
+| **2FA code** | Copy the current 2FA code |
+| **Open** | Open the tool's link |
+| **Edit** | Edit the tool (editors only) |
+
+The web app shows the same Username / Password / 2FA code / Edit buttons
+under every tool — no need to hover.
 
 ### Filling logins without opening OptiPass
 On any login page, **right-click the username or password field →

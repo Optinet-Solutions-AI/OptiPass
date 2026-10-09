@@ -63,7 +63,7 @@ async function ensurePageAccess(tab, interactive) {
 // Monochrome line icons (Feather-style), rendered via currentColor so
 // they follow the theme.
 const ICONS = {
-  fill: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  fill: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>',
   user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   key: '<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
   pen: '<path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
@@ -731,10 +731,10 @@ function renderList() {
       const actions = document.createElement('div');
       actions.className = 'entry-actions';
       if (state.activeHost && (entry.data.password || entry.data.username)) {
-        actions.append(actionBtn('fill', 'Fill on this page', () => fillCredentials(entry)));
+        actions.append(rowAction('fill', 'Fill login', 'Fill on this page', () => fillCredentials(entry), true));
       }
       actions.append(
-        actionBtn('user', 'Copy username', () =>
+        rowAction('copy', 'Username', entry.data.username ? 'Copy username' : 'Copy SSO account email', () =>
           copyText(
             entry.data.username || entry.data.ssoEmail,
             entry.data.username ? 'Username copied' : 'SSO account email copied'
@@ -742,16 +742,16 @@ function renderList() {
         )
       );
       if (entry.data.password) {
-        actions.append(actionBtn('key', 'Copy password', () => copyText(entry.data.password, 'Password copied')));
+        actions.append(rowAction('copy', 'Password', 'Copy password', () => copyText(entry.data.password, 'Password copied')));
       }
       if (entry.data.totp) {
-        actions.append(actionBtn('shield', 'Copy 2FA code', () => copyTotp(entry)));
+        actions.append(rowAction('copy', '2FA code', 'Copy 2FA code', () => copyTotp(entry)));
       }
       if (entry.data.url) {
-        actions.append(actionBtn('external', 'Open tool link', () => openLink(entry.data.url)));
+        actions.append(rowAction('external', 'Open', 'Open tool link', () => openLink(entry.data.url)));
       }
       if (vaultWritable(entry.vault_id)) {
-        actions.append(actionBtn('pen', 'Edit', () => openEdit(entry.id)));
+        actions.append(rowAction('pen', 'Edit', 'Edit', () => openEdit(entry.id)));
       }
       body.appendChild(actions);
 
@@ -796,6 +796,17 @@ function makeBadge(text, variant) {
   const b = document.createElement('span');
   b.className = `badge${variant ? ` ${variant}` : ''}`;
   b.textContent = text;
+  return b;
+}
+
+// Labelled row action: the icon says what kind of action (copy, open...),
+// the word says what it acts on, so nothing depends on a hover tooltip.
+function rowAction(iconName, label, titleText, onClick, main = false) {
+  const b = document.createElement('button');
+  b.className = 'btn act' + (main ? ' main' : '');
+  b.innerHTML = `${icon(iconName)}<span>${label}</span>`;
+  b.title = titleText;
+  b.addEventListener('click', onClick);
   return b;
 }
 
