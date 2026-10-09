@@ -1838,6 +1838,8 @@ function adminActionBtn(label, targetId, newRole, newStatus) {
 
 async function loadAdminInvites() {
   const invites = await api.rest('/invites?select=*&order=email');
+  state.adminInvites = invites;
+  renderMemberPicker(); // invited people show up there as "hasn't signed up yet"
   const box = $('invite-list');
   box.innerHTML = '';
   for (const inv of invites) {
@@ -1948,9 +1950,8 @@ function populateManagedVaults() {
 async function loadVaultMembers() {
   const vaultId = $('mv-vault').value;
   const list = $('mv-list');
-  const userSel = $('mv-user');
   list.innerHTML = '';
-  userSel.innerHTML = '';
+  $('mv-user').innerHTML = '';
   if (!vaultId) return;
 
   const members = await api.rest(
@@ -1979,12 +1980,49 @@ async function loadVaultMembers() {
     list.appendChild(row);
   }
 
-  const memberIds = new Set(members.map((m) => m.user_id));
-  for (const p of state.adminProfiles) {
-    if (p.status === 'active' && p.public_key && !memberIds.has(p.id)) {
-      userSel.append(new Option(p.display_name || p.email, p.id));
-    }
+  state.vaultMemberIds = new Set(members.map((m) => m.user_id));
+  renderMemberPicker();
+}
+
+// Who can be added to a vault, and why the others can't be yet. Adding
+// someone wraps the vault key with their public key, which only exists
+// once they have signed up and set a master password.
+function memberCandidates(profiles, invites, memberIds) {
+  const ready = [];
+  const waiting = [];
+  for (const p of profiles) {
+    if (memberIds.has(p.id)) continue;
+    const name = p.display_name || p.email;
+    if (p.status === 'disabled') waiting.push(`${name} - account disabled`);
+    else if (p.status !== 'active') waiting.push(`${name} - waiting for approval`);
+    else if (!p.public_key) waiting.push(`${name} - hasn't finished setup (no master password yet)`);
+    else ready.push({ id: p.id, name });
   }
+  const signedUp = new Set(profiles.map((p) => p.email));
+  for (const inv of invites) {
+    if (!signedUp.has(inv.email)) waiting.push(`${inv.email} - invited, hasn't signed up yet`);
+  }
+  return { ready, waiting };
+}
+
+function renderMemberPicker() {
+  const sel = $('mv-user');
+  sel.innerHTML = '';
+  if (!$('mv-vault').value || !state.vaultMemberIds) return;
+  const { ready, waiting } = memberCandidates(state.adminProfiles || [], state.adminInvites || [], state.vaultMemberIds);
+  sel.append(new Option(ready.length ? 'Add a person...' : 'No one else can be added yet', ''));
+  for (const c of ready) sel.append(new Option(c.name, c.id));
+  if (waiting.length) {
+    const group = document.createElement('optgroup');
+    group.label = "Can't be added yet";
+    for (const label of waiting) {
+      const o = new Option(label, '');
+      o.disabled = true;
+      group.append(o);
+    }
+    sel.append(group);
+  }
+  sel.value = '';
 }
 
 $('mv-vault').addEventListener('change', loadVaultMembers);
@@ -1992,7 +2030,8 @@ $('mv-vault').addEventListener('change', loadVaultMembers);
 $('btn-mv-add').addEventListener('click', async () => {
   const vaultId = $('mv-vault').value;
   const userId = $('mv-user').value;
-  if (!vaultId || !userId) return toast('Pick a vault and a user');
+  if (!vaultId) return toast('Create or pick a team vault first');
+  if (!userId) return toast('Pick the person to add');
   const vaultKey = state.vaultKeys.get(vaultId);
   if (!vaultKey) return toast('Vault key unavailable - lock and unlock again');
   try {

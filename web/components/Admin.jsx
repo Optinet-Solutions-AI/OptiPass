@@ -114,7 +114,8 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
   }
 
   async function addMember() {
-    if (!mvVault || !mvUser) return showToast('Pick a vault and a user');
+    if (!mvVault) return showToast('Create or pick a team vault first');
+    if (!mvUser) return showToast('Pick the person to add');
     const vaultKey = vaultKeysRef.current.get(mvVault);
     if (!vaultKey) return showToast('Vault key unavailable - lock and unlock again');
     try {
@@ -132,8 +133,24 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
     }
   }
 
+  // Who can be added, and why the others can't be yet: adding someone wraps
+  // the vault key with their public key, which only exists once they have
+  // signed up and set a master password.
   const memberIds = new Set(mvMembers.map((m) => m.user_id));
-  const candidates = users.filter((p) => p.status === 'active' && p.public_key && !memberIds.has(p.id));
+  const candidates = [];
+  const waiting = [];
+  for (const p of users) {
+    if (memberIds.has(p.id)) continue;
+    const name = p.display_name || p.email;
+    if (p.status === 'disabled') waiting.push(`${name} - account disabled`);
+    else if (p.status !== 'active') waiting.push(`${name} - waiting for approval`);
+    else if (!p.public_key) waiting.push(`${name} - hasn't finished setup (no master password yet)`);
+    else candidates.push(p);
+  }
+  const signedUp = new Set(users.map((p) => p.email));
+  for (const inv of invites) {
+    if (!signedUp.has(inv.email)) waiting.push(`${inv.email} - invited, hasn't signed up yet`);
+  }
 
   return (
     <div className="screen">
@@ -278,10 +295,17 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
         </div>
         <div className="row">
           <select value={mvUser} onChange={(e) => setMvUser(e.target.value)} style={{ flex: 1 }}>
-            <option value="">Add member...</option>
+            <option value="">{candidates.length ? 'Add a person...' : 'No one else can be added yet'}</option>
             {candidates.map((p) => (
               <option key={p.id} value={p.id}>{p.display_name || p.email}</option>
             ))}
+            {waiting.length > 0 && (
+              <optgroup label="Can't be added yet">
+                {waiting.map((label) => (
+                  <option key={label} value="" disabled>{label}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <select value={mvRole} onChange={(e) => setMvRole(e.target.value)}>
             <option value="editor">Editor</option>

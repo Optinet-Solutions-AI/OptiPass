@@ -230,7 +230,9 @@ Open **Admin** (the 👥 icon on the main screen — visible to admins only).
 1. Admin → **Team vaults** → type the team name (e.g. `AI Automation Team`)
 2. Click **Create** — you become the vault's Manager automatically
 3. Under **Vault members**, make sure the new vault is selected
-4. Pick a teammate in the **Add member...** dropdown
+4. Pick a teammate in the **Add a person...** dropdown. People who can't be
+   added yet are listed greyed out with the reason (e.g. invited but not
+   signed up, or hasn't set a master password yet)
 5. Choose their role — **Manager** (manage members), **Editor** (add/edit
    tools), or **Viewer** (see and copy only)
 6. Click **Add** — they instantly see everything in that vault
