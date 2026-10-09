@@ -217,7 +217,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       />
       {signup && (
         <>
-          <label>Invite code</label>
+          <label>Invite code (optional)</label>
           <input
             type="text"
             value={invite}

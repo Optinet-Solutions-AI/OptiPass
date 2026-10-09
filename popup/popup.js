@@ -245,7 +245,7 @@ function setLoginMode(mode) {
   $('btn-login-submit').textContent = signup ? 'Create account' : 'Sign in';
   $('login-toggle').textContent = signup ? 'Have an account? Sign in' : 'Need an account? Sign up';
   $('login-sub').textContent = signup
-    ? 'Sign up with the invite code your admin sent you.'
+    ? 'Sign up with the email your admin invited (or their invite code).'
     : 'Sign in with your team account.';
   hideError('login-error');
 }
