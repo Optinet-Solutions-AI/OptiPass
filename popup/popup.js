@@ -140,7 +140,8 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.remove('hidden');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.add('hidden'), 2200);
+  // Long messages (usually errors) stay up long enough to read.
+  toastTimer = setTimeout(() => el.classList.add('hidden'), Math.min(8000, Math.max(2200, msg.length * 65)));
 }
 
 function showError(id, msg, ok = false) {
@@ -192,7 +193,7 @@ async function boot() {
     [profile] = await api.rest(`/profiles?id=eq.${state.uid}&select=*`);
   } catch (err) {
     showScreen('login');
-    return showError('login-error', `Could not reach the server: ${err.message}`);
+    return showError('login-error', `Couldn't load your account. ${err.message}`);
   }
   if (!profile) {
     // Signed in but no profile row (should not happen) - treat as pending.
@@ -278,10 +279,7 @@ async function submitLogin() {
     $('login-pw2').value = '';
     await boot();
   } catch (err) {
-    const msg = /database error/i.test(err.message)
-      ? 'An invite code is required to join - ask your admin for one.'
-      : err.message;
-    showError('login-error', msg);
+    showError('login-error', err.message); // already plain language (lib/api.js)
   } finally {
     btn.disabled = false;
   }

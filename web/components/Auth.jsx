@@ -73,11 +73,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       setPw2('');
       await onBoot();
     } catch (err) {
-      setError(
-        /database error/i.test(err.message)
-          ? 'An invite code is required to join - ask your admin for one.'
-          : err.message
-      );
+      setError(err.message); // already plain language (lib/api.js)
     } finally {
       setBusy(false);
     }

@@ -38,7 +38,8 @@ export default function App() {
   const showToast = useCallback((msg) => {
     setToast(msg);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    // Long messages (usually errors) stay up long enough to read.
+    toastTimer.current = setTimeout(() => setToast(null), Math.min(8000, Math.max(2600, String(msg).length * 65)));
   }, []);
 
   const applyTheme = useCallback((theme) => {
@@ -63,7 +64,7 @@ export default function App() {
       [prof] = await api.rest(`/profiles?id=eq.${session.user.id}&select=*`);
     } catch (err) {
       setScreen('login');
-      showToast(`Could not reach the server: ${err.message}`);
+      showToast(`Couldn't load your account. ${err.message}`);
       return;
     }
     if (!prof || prof.status === 'pending' || prof.status === 'disabled') {
