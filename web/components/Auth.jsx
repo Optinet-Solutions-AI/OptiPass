@@ -51,6 +51,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
   }, []);
 
   async function submitLogin() {
+    if (busy) return; // already submitting (e.g. Enter pressed twice)
     setError(null);
     setOk(false);
     if (!email || !pw) return setError('Email and password are required.');
@@ -78,6 +79,9 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       setBusy(false);
     }
   }
+
+  // Enter submits from any field, when signing in and when signing up.
+  const onEnter = (e) => e.key === 'Enter' && submitLogin();
 
   const [generated, setGenerated] = useState('');
   const [savedIt, setSavedIt] = useState(false);
@@ -232,6 +236,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
           <input
             id="auth-invite"
             type="text"
+            onKeyDown={onEnter}
             value={invite}
             onChange={(e) => setInvite(e.target.value)}
             placeholder="e.g. 4f9a1c2b7d3e5a08"
@@ -245,6 +250,7 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       <input
         id="auth-email"
         type="email"
+        onKeyDown={onEnter}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@optinetsolutions.com"
@@ -258,13 +264,13 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
         type="password"
         value={pw}
         onChange={(e) => setPw(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && !signup && submitLogin()}
+        onKeyDown={onEnter}
         autoComplete={signup ? 'new-password' : 'current-password'}
       />
       {signup && (
         <>
           <label htmlFor="auth-pw2">Confirm password</label>
-          <input id="auth-pw2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+          <input id="auth-pw2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={onEnter} autoComplete="new-password" />
         </>
       )}
       {error && <div className={`error${ok ? ' ok' : ''}`}>{error}</div>}

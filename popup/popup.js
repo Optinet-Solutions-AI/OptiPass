@@ -255,6 +255,7 @@ $('login-toggle').addEventListener('click', () =>
 );
 
 async function submitLogin() {
+  if ($('btn-login-submit').disabled) return; // already submitting (e.g. Enter pressed twice)
   const email = $('login-email').value.trim();
   const pw = $('login-pw').value;
   hideError('login-error');
@@ -286,9 +287,12 @@ async function submitLogin() {
 }
 
 $('btn-login-submit').addEventListener('click', submitLogin);
-$('login-pw').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && state.loginMode === 'signin') submitLogin();
-});
+// Enter submits from any field, when signing in and when signing up.
+for (const id of ['login-email', 'login-pw', 'login-pw2', 'login-invite']) {
+  $(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitLogin();
+  });
+}
 
 $('btn-pending-refresh').addEventListener('click', boot);
 $('btn-pending-signout').addEventListener('click', doSignOut);
