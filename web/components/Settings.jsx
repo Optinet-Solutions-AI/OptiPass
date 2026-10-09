@@ -4,6 +4,17 @@ import { useState } from 'react';
 import * as api from '@/lib/api';
 import { Icon } from '@/components/ui';
 
+// Auto-lock is picked from a fixed list, so a typo can no longer switch it
+// off (the old number field saved 0 = never for -5 or an empty box). A stored
+// value that isn't on the list gets its own option.
+const AUTOLOCK_CHOICES = [1, 5, 15, 30, 60, 240];
+
+function autoLockLabel(minutes) {
+  if (!minutes) return 'Never';
+  if (minutes % 60 === 0) return minutes === 60 ? '1 hour' : `${minutes / 60} hours`;
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
 export default function Settings({
   profile,
   settings,
@@ -79,16 +90,28 @@ export default function Settings({
       <section>
         <h3>Auto-lock</h3>
         <div className="row">
-          <span className="muted" style={{ flex: 1 }}>Lock after inactivity (minutes, 0 = never)</span>
-          <input
-            type="number"
-            min="0"
-            max="240"
-            value={settings.autoLockMinutes}
-            onChange={(e) =>
-              setSettings({ ...settings, autoLockMinutes: Math.min(240, Math.max(0, parseInt(e.target.value, 10) || 0)) })
-            }
-          />
+          <label className="inline muted" htmlFor="set-autolock" style={{ flex: 1, margin: 0, color: 'var(--muted)' }}>Lock after inactivity</label>
+          <select
+            id="set-autolock"
+            value={String(settings.autoLockMinutes)}
+            onChange={(e) => {
+              const minutes = Number(e.target.value);
+              setSettings({ ...settings, autoLockMinutes: minutes });
+              showToast(
+                minutes === 0
+                  ? 'Auto-lock off - OptiPass stays unlocked until you lock it'
+                  : `Saved - locks after ${autoLockLabel(minutes)} without activity`
+              );
+            }}
+          >
+            {[...new Set([...AUTOLOCK_CHOICES, settings.autoLockMinutes])]
+              .filter((m) => m > 0)
+              .sort((a, b) => a - b)
+              .map((m) => (
+                <option key={m} value={m}>{autoLockLabel(m)}</option>
+              ))}
+            <option value="0">Never</option>
+          </select>
         </div>
       </section>
 

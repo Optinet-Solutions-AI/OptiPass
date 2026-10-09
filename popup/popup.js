@@ -1601,7 +1601,7 @@ async function loadSettingsScreen() {
   $('set-email').textContent = `Signed in as ${state.profile.email} (${state.profile.role.replace('_', ' ')})`;
   $('set-name').value = state.profile.display_name || '';
   $('set-theme').value = state.settings.theme || 'light';
-  $('set-autolock').value = state.settings.autoLockMinutes;
+  fillAutoLockSelect(state.settings.autoLockMinutes);
   for (const id of ['cmp-old', 'cmp-new', 'cmp-new2', 'sp-pin', 'sp-pin2']) $(id).value = '';
   hideError('cmp-msg');
   hideError('sp-msg');
@@ -1684,13 +1684,36 @@ $('btn-name-save').addEventListener('click', async () => {
 
 $('set-theme').addEventListener('change', (e) => setTheme(e.target.value, true));
 
-$('btn-autolock-save').addEventListener('click', async () => {
-  const minutes = Math.min(240, Math.max(0, parseInt($('set-autolock').value, 10) || 0));
-  $('set-autolock').value = minutes;
+// Auto-lock is picked from a fixed list, so a typo can no longer switch it
+// off silently (typing -5 used to save 0 = never). A stored value that
+// isn't on the list (older versions took any number) gets its own option.
+const AUTOLOCK_CHOICES = [1, 5, 15, 30, 60, 240];
+
+function autoLockLabel(minutes) {
+  if (!minutes) return 'Never';
+  if (minutes % 60 === 0) return minutes === 60 ? '1 hour' : `${minutes / 60} hours`;
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function fillAutoLockSelect(current) {
+  const cur = Number.isFinite(current) ? current : 5;
+  const sel = $('set-autolock');
+  const mins = [...new Set([...AUTOLOCK_CHOICES, cur])].filter((m) => m > 0).sort((a, b) => a - b);
+  sel.innerHTML = '';
+  for (const m of [...mins, 0]) sel.append(new Option(autoLockLabel(m), String(m)));
+  sel.value = String(cur);
+}
+
+$('set-autolock').addEventListener('change', async (e) => {
+  const minutes = Number(e.target.value);
   state.settings.autoLockMinutes = minutes;
   await keychain.saveSettings(state.settings);
   await keychain.resetAutoLock();
-  toast(minutes === 0 ? 'Auto-lock disabled' : `Auto-lock set to ${minutes} min`);
+  toast(
+    minutes === 0
+      ? 'Auto-lock off - OptiPass stays unlocked until you lock it'
+      : `Saved - locks after ${autoLockLabel(minutes)} without activity`
+  );
 });
 
 $('btn-change-pw').addEventListener('click', async () => {

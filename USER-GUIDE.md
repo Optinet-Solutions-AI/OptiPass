@@ -65,8 +65,8 @@ You need an **invite code** from an admin — signups without one are rejected.
   five times → the PIN is removed and your master password is required.
 - **Master password:** used on a new browser, after a PIN wipe, or via
   "Use master password instead".
-- **Auto-lock:** the vault locks after 5 minutes idle (change it in Settings,
-  0 = never) and always when the browser closes. Locking never signs you out.
+- **Auto-lock:** the vault locks after 5 minutes idle (change it in Settings →
+  Auto-lock: 1 minute to 4 hours, or Never) and always when the browser closes. Locking never signs you out.
 - **Sign out** (Settings → Sign out): full logout — account password needed
   next time, and your PIN on that browser is removed.
 
@@ -281,7 +281,7 @@ fill, the element picker, the PIN, and the toolbar badge.
 |---|---|
 | Display name | Shown to teammates |
 | Theme | Light (default) / dark — follows you across devices |
-| Auto-lock | Minutes of idle before locking; 0 = never |
+| Auto-lock | How long without activity before locking: 1 minute … 4 hours, or Never. Saved as soon as you pick |
 | Quick unlock PIN | Set / change / remove for this browser |
 | Change master password | Re-encrypts your keys; vault data untouched |
 | Updates | Auto-update toggle (default on) + manual check |
