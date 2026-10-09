@@ -50,9 +50,9 @@ Two ways in, both admin-controlled:
 
 Each user sets their **own** master password — nobody, including admins, can read anyone else's personal vault.
 
-## 7. Shared vaults
+## 7. Team vaults
 
-1. Admin screen → *Shared vaults* → create one (e.g. "IT Team", "Clients")
+1. Admin screen → *Team vaults* → create one (e.g. "IT Team", "Clients")
 2. Under *Vault members*, add teammates and pick their permission:
    - **Manager** — add/remove members, delete vault, edit items
    - **Editor** — add/edit/delete items

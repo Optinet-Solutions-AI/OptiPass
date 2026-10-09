@@ -43,7 +43,7 @@ Legend: ✅ **have it** · 🟡 **easy add** (days) · 🔵 **bigger effort** (w
 
 | Feature | Status | Notes |
 |---|---|---|
-| Fill from popup (⬇ button) | ✅ | Works with React/Angular login forms |
+| Fill from popup (Fill login button) | ✅ | Works with React/Angular login forms |
 | "This site" suggestions on top | ✅ | Matches current tab's domain |
 | Inline autofill icon inside page fields | 🔵 | Content script UI on every page |
 | Auto-save prompt after logging in on a site | 🔵 | Form-submission capture |

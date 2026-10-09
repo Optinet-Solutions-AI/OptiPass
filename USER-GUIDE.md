@@ -77,7 +77,7 @@ You need an **invite code** from an admin — signups without one are rejected.
 - **Search** matches tool names, usernames, links, and tags — this is the
   fastest way to anything.
 - **Filters:** the vault dropdown (Personal / teams) and, once you use tags,
-  a label dropdown next to it.
+  a tag dropdown next to it.
 - **Tool rows are collapsed** — one line with the name and status badges:
   - `this site` — matches the page you're on
   - `LOW` (red) — a credit/usage metric fell below its threshold
@@ -119,7 +119,7 @@ first", do that and right-click again.
 **Sign-in method:**
 - **Username & password** — normal login; use ⚡ to generate a strong password
 - **OAuth (Google, GitHub, ...)** — for "Sign in with Google" tools: pick
-  *which account* signs in (link it to that account's own entry). Username and
+  *which account* signs in (link it to the tool that holds that account). Username and
   password fields disappear — there aren't any.
 
 **Tags:** add comma-separated tags (e.g. `Project Phoenix, proxies`) in the
@@ -145,12 +145,12 @@ Replace Google Authenticator: when a site offers authenticator-app 2FA, choose
 **"enter code manually"**, copy the setup key, and paste it here. OptiPass
 shows the rotating 6-digit code with a countdown. Save the site's **recovery
 codes** into Notes. From then on, Fill auto-copies the current code, and the
-🛡 button copies it anytime. Team vault = the whole team can pass 2FA.
+**2FA code** button copies it anytime. Team vault = the whole team can pass 2FA.
 > Keep the 2FA of *root* accounts (the email/Google account that recovers
 > everything else) on a phone as well — never only in OptiPass.
 
 ### API keys & secrets
-Any number of labeled secrets per tool (public key, private key, staging...)
+Any number of named secrets per tool (public key, private key, staging...)
 with copy buttons. Encrypted like everything else.
 
 ### Credit & usage monitors
@@ -187,14 +187,14 @@ red badge appears on the OptiPass toolbar icon.
 Anything else — recovery codes, quirks, who owns the account.
 
 ### Deleting a tool
-1. Open the tool → ✎ edit
+1. Open the tool → **Edit**
 2. Scroll to the bottom → **Delete tool**
 3. The button changes to **Confirm delete** — click it again
 4. The tool, its monitors, and its payment records are gone for everyone
    in that vault (this cannot be undone)
 
 ### Moving a tool to another vault (e.g. Personal → AI Automation Team)
-1. Open the tool → ✎ edit
+1. Open the tool → **Edit**
 2. In **Basic information**, change **Who has access** to the target team
 3. **Save** — the tool is re-encrypted under the team's key and everyone in
    that team can now see it
@@ -211,9 +211,9 @@ Anything else — recovery codes, quirks, who owns the account.
   vault sees the whole tool (credentials, 2FA, keys, monitors, payments).
 - **Personal is truly private** — cryptographically. No admin, no server
   owner, nobody can decrypt it.
-- **Per-vault roles:** **Admin** (manage members, delete vault), **Editor**
+- **Per-vault roles:** **Manager** (manage members, delete vault), **Editor**
   (add/edit tools), **Viewer** (see and copy only).
-- Sharing *part* of a tool (e.g. just an API key): make a second entry with
+- Sharing *part* of a tool (e.g. just an API key): make a second tool with
   only that key in a vault the right people are in.
 - **Move tools between vaults**: edit the tool and change "Who has access".
   **Only a tool's creator can move it** — enforced by the database.
@@ -227,15 +227,15 @@ Anything else — recovery codes, quirks, who owns the account.
 Open **Admin** (the 👥 icon on the main screen — visible to admins only).
 
 ### Creating a team (step by step)
-1. Admin → **Shared vaults** → type the team name (e.g. `AI Automation Team`)
-2. Click **Create** — you become the vault's Admin automatically
+1. Admin → **Team vaults** → type the team name (e.g. `AI Automation Team`)
+2. Click **Create** — you become the vault's Manager automatically
 3. Under **Vault members**, make sure the new vault is selected
 4. Pick a teammate in the **Add member...** dropdown
-5. Choose their role — **Admin** (manage members), **Editor** (add/edit
+5. Choose their role — **Manager** (manage members), **Editor** (add/edit
    tools), or **Viewer** (see and copy only)
 6. Click **Add** — they instantly see everything in that vault
 
-> Only a vault's Admin can add members — adding someone means encrypting the
+> Only a vault's Manager can add members — adding someone means encrypting the
 > vault key for them, and only members hold that key. A person must have
 > signed up (and set their master password) before they can be added.
 

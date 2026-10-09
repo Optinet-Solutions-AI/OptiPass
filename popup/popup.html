@@ -429,27 +429,27 @@
 
     <section>
       <h3>Filling logins</h3>
-      <p class="muted">Open a site's login page, click OptiPass, and press the ⬇ button on the matching entry - username and password fill in, and if the entry has a 2FA key its current code is copied so you can paste it when asked.</p>
+      <p class="muted">Open a site's login page, click OptiPass, and press <strong>Fill login</strong> on the matching tool - username and password fill in, and if the tool has a 2FA key its current code is copied so you can paste it when asked.</p>
     </section>
 
     <section>
       <h3>2FA one-time passwords</h3>
-      <p class="muted">When a site offers authenticator-app 2FA, choose "enter code manually" and paste the setup key into the entry's 2FA field. OptiPass then generates the rotating 6-digit code - same as Google Authenticator, shared with your vault's members. Keep recovery codes in the Notes.</p>
+      <p class="muted">When a site offers authenticator-app 2FA, choose "enter code manually" and paste the setup key into the tool's 2FA field. OptiPass then generates the rotating 6-digit code - same as Google Authenticator, shared with your vault's members. Keep recovery codes in the Notes.</p>
     </section>
 
     <section>
       <h3>Vaults are your teams</h3>
-      <p class="muted"><strong>Personal</strong> is cryptographically private - not even admins can read it. Shared vaults (e.g. AI Team, RoosterPartner) are visible only to the members an admin adds; passwords never cross between teams.</p>
+      <p class="muted"><strong>Personal</strong> is cryptographically private - not even admins can read it. Team vaults (e.g. AI Team, RoosterPartner) are visible only to the members a vault manager adds; passwords never cross between teams.</p>
     </section>
 
     <section>
       <h3>Credit &amp; usage monitors</h3>
-      <p class="muted">Edit an entry and add metrics (Credits, Bandwidth...) read from the tool's dashboard page or its API. Readings show in a box under the entry, turn red below your threshold, and a red badge appears on the OptiPass icon. API keys for monitors are stored end-to-end encrypted.</p>
+      <p class="muted">Edit a tool and add metrics (Credits, Bandwidth...) read from the tool's dashboard page or its API. Readings show in a box under the tool, turn red below your threshold, and a red badge appears on the OptiPass icon. API keys for monitors are stored end-to-end encrypted.</p>
     </section>
 
     <section>
       <h3>FAQ</h3>
-      <p class="muted"><strong>Forgot your master password?</strong> It cannot be recovered. An admin resets your keys (SETUP.md explains how); your personal vault is lost but shared vaults come back when a manager re-adds you.</p>
+      <p class="muted"><strong>Forgot your master password?</strong> It cannot be recovered. An admin resets your keys (SETUP.md explains how); your Personal vault is lost but team vaults come back when a vault manager re-adds you.</p>
       <p class="muted"><strong>Forgot your PIN?</strong> Click "Use master password instead" - after 5 wrong PIN tries it resets automatically.</p>
       <p class="muted"><strong>New teammate?</strong> Admin screen &gt; Invite - send them the invite code; they install OptiPass, sign up with the code, and set their own passwords.</p>
       <p class="muted"><strong>Updating?</strong> Updates apply automatically. To force one: Settings &gt; Check for updates.</p>
@@ -485,16 +485,16 @@
     </section>
 
     <section>
-      <h3>Shared vaults</h3>
+      <h3>Team vaults</h3>
       <div class="row">
-        <input type="text" id="nv-name" placeholder="New vault name, e.g. IT Team" />
+        <input type="text" id="nv-name" placeholder="New team vault name, e.g. IT Team" />
         <button id="btn-create-vault" class="btn">Create</button>
       </div>
     </section>
 
     <section>
       <h3>Vault members</h3>
-      <p class="muted">You can manage vaults where you are a manager.</p>
+      <p class="muted">You can manage the team vaults where you are a Manager. <strong>Manager</strong>: add/remove members, delete the vault. <strong>Editor</strong>: add and edit tools. <strong>Viewer</strong>: see and copy only.</p>
       <select id="mv-vault"></select>
       <div id="mv-list" class="stack"></div>
       <div class="row">
@@ -502,7 +502,7 @@
         <select id="mv-role">
           <option value="editor">Editor</option>
           <option value="viewer">Viewer</option>
-          <option value="manager">Admin</option>
+          <option value="manager">Manager</option>
         </select>
         <button id="btn-mv-add" class="btn">Add</button>
       </div>

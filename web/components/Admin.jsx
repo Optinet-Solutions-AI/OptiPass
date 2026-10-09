@@ -239,15 +239,19 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
       </section>
 
       <section>
-        <h3>Shared vaults (teams)</h3>
+        <h3>Team vaults</h3>
         <div className="row">
-          <input type="text" value={newVault} onChange={(e) => setNewVault(e.target.value)} placeholder="New vault name, e.g. AI Team" />
+          <input type="text" value={newVault} onChange={(e) => setNewVault(e.target.value)} placeholder="New team vault name, e.g. AI Team" />
           <button className="btn" onClick={createVault}>Create</button>
         </div>
       </section>
 
       <section>
         <h3>Vault members</h3>
+        <p className="muted">
+          You can manage the team vaults where you are a Manager. <strong>Manager</strong>: add/remove members, delete
+          the vault. <strong>Editor</strong>: add and edit tools. <strong>Viewer</strong>: see and copy only.
+        </p>
         <select value={mvVault} onChange={(e) => setMvVault(e.target.value)}>
           {managed.map((m) => (
             <option key={m.vault_id} value={m.vault_id}>{m.vaults.name}</option>
@@ -256,7 +260,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
         <div className="stack">
           {mvMembers.map((mem) => (
             <div className="person" key={mem.user_id}>
-              <div className="who">{mem.profiles?.display_name || mem.profiles?.email || mem.user_id} ({mem.role === 'manager' ? 'admin' : mem.role})</div>
+              <div className="who">{mem.profiles?.display_name || mem.profiles?.email || mem.user_id} ({{ manager: 'Manager', editor: 'Editor', viewer: 'Viewer' }[mem.role] || mem.role})</div>
               {mem.user_id !== uid && (
                 <button
                   className="btn small"
@@ -282,7 +286,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
           <select value={mvRole} onChange={(e) => setMvRole(e.target.value)}>
             <option value="editor">Editor</option>
             <option value="viewer">Viewer</option>
-            <option value="manager">Admin</option>
+            <option value="manager">Manager</option>
           </select>
           <button className="btn" onClick={addMember}>Add</button>
         </div>
@@ -298,7 +302,7 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
               showToast('Vault deleted');
             }}
           >
-            {confirmVaultDelete ? 'Click again to delete vault + all its entries' : 'Delete this vault'}
+            {confirmVaultDelete ? 'Click again to delete vault + all its tools' : 'Delete this vault'}
           </button>
         )}
       </section>

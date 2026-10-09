@@ -423,7 +423,7 @@ export default function App() {
       }
       await fetchMonitors();
     } catch (err) {
-      showToast(`Entry saved, but monitors failed: ${err.message}`);
+      showToast(`Tool saved, but monitors failed: ${err.message}`);
     }
     return null;
   }

@@ -47,7 +47,7 @@ export default function Vault({
 
   async function copyTotp(entry) {
     const t = await generateTotp(entry.data.totp);
-    if (!t) return showToast('This entry has an invalid 2FA key');
+    if (!t) return showToast('This tool has an invalid 2FA key');
     await navigator.clipboard.writeText(t.code);
     showToast(`2FA code copied - valid ${t.secondsLeft}s`);
   }
@@ -78,8 +78,8 @@ export default function Vault({
 
       {entries.length === 0 ? (
         <div className="empty">
-          <p>No entries{q ? ' match' : ' yet'}.</p>
-          <p className="muted">Click + to add a login.</p>
+          <p>No tools{q ? ' match' : ' yet'}.</p>
+          <p className="muted">Click + to add a tool.</p>
         </div>
       ) : (
         <ul className="entry-list">

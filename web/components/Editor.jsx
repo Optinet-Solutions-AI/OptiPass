@@ -195,7 +195,7 @@ export default function Editor({
     <div className="screen">
       <header className="topbar">
         <button className="btn icon" onClick={goBack}><Icon name="back" /></button>
-        <h2>{entry ? 'Edit entry' : 'Add entry'}</h2>
+        <h2>{entry ? 'Edit tool' : 'Add tool'}</h2>
       </header>
       {confirmLeave && (
         <div className="unsaved" role="alert">
@@ -219,7 +219,7 @@ export default function Editor({
       >
         {writableVaults.map((m) => (
           <option key={m.vault_id} value={m.vault_id}>
-            {m.vaults.type === 'personal' ? 'Private (only me)' : `Team: ${m.vaults.name}`}
+            {m.vaults.type === 'personal' ? 'Personal (only me)' : `Team: ${m.vaults.name}`}
           </option>
         ))}
       </select>
@@ -240,7 +240,7 @@ export default function Editor({
         <>
           <label>Signs in with which account</label>
           <select value={ssoItemId} onChange={(e) => setSsoItemId(e.target.value)}>
-            <option value="">(pick the account entry)</option>
+            <option value="">(pick the tool for that account)</option>
             {(items || [])
               .filter((e) => e.id !== entry?.id)
               .sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''))
@@ -301,7 +301,7 @@ export default function Editor({
       <div className="stack">
         {secrets.map((s, i) => (
           <div className="row" style={{ margin: 0 }} key={i}>
-            <input type="text" value={s.label} placeholder="Label, e.g. Private API key" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+            <input type="text" value={s.label} placeholder="Name, e.g. Private API key" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
             <input type="password" value={s.value} placeholder="Secret value" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
             <button className="btn icon" title="Copy secret" onClick={async () => { await navigator.clipboard.writeText(s.value || ''); showToast('Secret copied'); }}><Icon name="key" /></button>
             <button className="btn icon" title="Remove" onClick={() => setSecrets(secrets.filter((_, j) => j !== i))}><Icon name="trash" /></button>
@@ -405,7 +405,7 @@ export default function Editor({
             onClick={async () => {
               if (!confirmDelete) return setConfirmDelete(true);
               await onDelete(entry.id);
-              showToast('Entry deleted');
+              showToast('Tool deleted');
               onBack();
             }}
           >

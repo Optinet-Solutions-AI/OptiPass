@@ -569,7 +569,7 @@ function populateVaultSelects() {
   fv.innerHTML = '';
   for (const m of sortedVaults()) {
     if (['manager', 'editor'].includes(m.role)) {
-      const label = m.vaults.type === 'personal' ? 'Private (only me)' : `Team: ${m.vaults.name}`;
+      const label = m.vaults.type === 'personal' ? 'Personal (only me)' : `Team: ${m.vaults.name}`;
       fv.append(new Option(label, m.vault_id));
     }
   }
@@ -828,7 +828,7 @@ async function copyText(text, message) {
 
 async function copyTotp(entry) {
   const t = await generateTotp(entry.data.totp);
-  if (!t) return toast('This entry has an invalid 2FA key');
+  if (!t) return toast('This tool has an invalid 2FA key');
   await navigator.clipboard.writeText(t.code);
   toast(`2FA code copied - valid ${t.secondsLeft}s`);
   keychain.resetAutoLock();
@@ -850,7 +850,7 @@ function populateTagFilter() {
     a.localeCompare(b)
   );
   sel.innerHTML = '';
-  sel.append(new Option('All labels', 'all'));
+  sel.append(new Option('All tags', 'all'));
   for (const t of tags) sel.append(new Option(t, t));
   if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
   sel.classList.toggle('hidden', tags.length === 0);
@@ -989,7 +989,7 @@ async function openEdit(id, resume = null) {
   $('f-signin').value = rawMethod === 'password' ? 'password' : 'oauth';
   const ssoSel = $('f-sso-item');
   ssoSel.innerHTML = '';
-  ssoSel.append(new Option('(pick the account entry)', ''));
+  ssoSel.append(new Option('(pick the tool for that account)', ''));
   for (const e of [...state.items].sort((a, b) => (a.data.title || '').localeCompare(b.data.title || ''))) {
     if (e.id === id) continue;
     ssoSel.append(new Option(`${e.data.title}${e.data.username ? ` - ${e.data.username}` : ''}`, e.id));
@@ -1525,7 +1525,7 @@ $('btn-save').addEventListener('click', async () => {
         }
       }
     } catch (err) {
-      saveMsg = `Entry saved, but monitors failed: ${err.message}`;
+      saveMsg = `Tool saved, but monitors failed: ${err.message}`;
     }
 
     await keychain.resetAutoLock();
@@ -1560,7 +1560,7 @@ $('btn-delete').addEventListener('click', async (e) => {
     state.items = state.items.filter((en) => en.id !== state.editingId);
     renderList();
     showScreen('main');
-    toast('Entry deleted');
+    toast('Tool deleted');
   } catch (err) {
     showError('edit-error', err.message);
   }
@@ -1910,7 +1910,7 @@ async function loadVaultMembers() {
     row.className = 'person';
     const who = document.createElement('div');
     who.className = 'who';
-    const ROLE_LABELS = { manager: 'admin', editor: 'editor', viewer: 'viewer' };
+    const ROLE_LABELS = { manager: 'Manager', editor: 'Editor', viewer: 'Viewer' };
     who.textContent = `${mem.profiles?.display_name || mem.profiles?.email || mem.user_id} (${ROLE_LABELS[mem.role] || mem.role})`;
     row.appendChild(who);
     if (mem.user_id !== state.uid) {
@@ -1964,7 +1964,7 @@ $('btn-vault-delete').addEventListener('click', async (e) => {
   if (!vaultId) return;
   if (!btn.dataset.confirming) {
     btn.dataset.confirming = '1';
-    btn.textContent = 'Click again to delete vault + all its entries';
+    btn.textContent = 'Click again to delete vault + all its tools';
     return;
   }
   try {
@@ -2576,7 +2576,7 @@ function renderSecretList() {
     const row = document.createElement('div');
     row.className = 'row';
     row.style.margin = '0';
-    const label = boundInput('text', s, 'label', 'Label, e.g. Private API key');
+    const label = boundInput('text', s, 'label', 'Name, e.g. Private API key');
     label.classList.add('grow');
     const value = boundInput('password', s, 'value', 'Secret value');
     value.classList.add('grow');
@@ -2767,9 +2767,9 @@ const TOUR_STEPS = [
   { screen: 'main', el: 'tag-filter', title: 'Tags', text: 'Tag tools by project in the editor, then filter them here.', skip: () => $('tag-filter').classList.contains('hidden') },
   { screen: 'main', el: 'btn-window', title: 'Open in a window', text: 'Runs OptiPass in its own window that stays open while you browse - used for long edits, on-page picking, and payment guides.' },
   { screen: 'main', el: 'btn-add', title: 'Add a tool', text: 'Start with the basics; after saving you can add everything else. Let\'s look inside the editor...' },
-  { screen: 'edit', el: 'acc-basic', title: 'Basic information', text: 'Name, link, who has access (Private stays private - even from admins), and the sign-in method, including OAuth tools linked to the Google/GitHub account they use.' },
+  { screen: 'edit', el: 'acc-basic', title: 'Basic information', text: 'Name, link, who has access (Personal stays private - even from admins), and the sign-in method, including OAuth tools linked to the Google/GitHub account they use.' },
   { screen: 'edit', el: 'acc-mfa', title: 'MFA - one-time passwords', text: 'Paste a site\'s 2FA setup key and OptiPass replaces Google Authenticator: live rotating codes, and Fill copies the current one automatically.' },
-  { screen: 'edit', el: 'acc-secrets', title: 'API keys & secrets', text: 'Any number of labeled secrets per tool - public keys, private keys, staging - each encrypted, each with a copy button.' },
+  { screen: 'edit', el: 'acc-secrets', title: 'API keys & secrets', text: 'Any number of named secrets per tool - public keys, private keys, staging - each encrypted, each with a copy button.' },
   { screen: 'edit', el: 'acc-monitors', title: 'Credit & usage monitors', text: 'Track credits, bandwidth, RAM - anything with a number - read from the tool\'s API or picked off its dashboard. Below your threshold it turns red and badges the OptiPass icon.' },
   { screen: 'edit', el: 'acc-payments', title: 'Payments & top-ups', text: 'Keep the payment link, record every top-up, and request payments: the payer gets a guide window with everything needed, and marking it paid files the history automatically.' },
   { screen: 'settings', el: 'sec-pin', title: 'Quick unlock PIN', text: 'Daily unlocking is just 6 digits. Five wrong tries removes the PIN and asks for your master password (changeable here too).' },
