@@ -173,7 +173,9 @@ red badge appears on the OptiPass toolbar icon.
 - **For the person paying**: when you open that tool's payment page, OptiPass
   pops up a **guide window** with the amount, open-page button, copy
   login/password/2FA, and **Mark as paid** — which files the payment into
-  history automatically.
+  history automatically. Viewers (see-and-copy access) can pay but can't
+  record it: their guide says so, and they tell the requester or another
+  editor, who marks it paid.
 - **Payment history**: every top-up with date, amount, currency, method, and
   whether it's a one-time top-up, monthly subscription, or auto-recharge
   (pay-as-you-go).

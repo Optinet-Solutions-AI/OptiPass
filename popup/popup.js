@@ -1464,10 +1464,7 @@ $('btn-save').addEventListener('click', async () => {
     const { iv, ct } = await encryptJson(key, data);
     let itemId;
     if (existing) {
-      await api.rest(`/items?id=eq.${existing.id}`, {
-        method: 'PATCH',
-        body: { vault_id: vaultId, iv, enc_data: ct },
-      });
+      await patchItemOrFail(existing.id, { vault_id: vaultId, iv, enc_data: ct });
       existing.vault_id = vaultId;
       existing.data = data;
       itemId = existing.id;
@@ -1985,7 +1982,9 @@ function openPayGuide(itemId) {
   const entry = state.items.find((e) => e.id === itemId);
   const req = entry && (entry.data.paymentRequests || []).find((r) => r.status === 'pending');
   if (!entry || !req) {
-    toast('No pending payment request found');
+    // e.g. someone else already marked it paid - land on the list, not a blank window
+    showScreen('main');
+    toast('This payment request has already been handled');
     return;
   }
   state.payGuideItemId = itemId;
@@ -2010,6 +2009,13 @@ function openPayGuide(itemId) {
   if (login) addLine('Login', login);
   $('btn-pg-2fa').classList.toggle('hidden', !entry.data.totp);
   $('btn-pg-pass').classList.toggle('hidden', !entry.data.password);
+  // Viewers can pay but can't edit the tool, so they can't record the payment.
+  const canRecord = vaultWritable(entry.vault_id);
+  $('btn-pg-paid').classList.toggle('hidden', !canRecord);
+  $('pg-viewonly').classList.toggle('hidden', canRecord);
+  $('pg-viewonly').textContent =
+    `You have view-only access to "${vaultName(entry.vault_id)}", so you can't mark this as paid here. ` +
+    `After paying, tell ${req.requestedBy} or another editor of that vault so they can mark it paid.`;
   showScreen('payguide');
 }
 
@@ -2055,10 +2061,7 @@ $('btn-pg-paid').addEventListener('click', async (e) => {
     };
     const key = state.vaultKeys.get(entry.vault_id);
     const { iv, ct } = await encryptJson(key, data);
-    await api.rest(`/items?id=eq.${entry.id}`, {
-      method: 'PATCH',
-      body: { vault_id: entry.vault_id, iv, enc_data: ct },
-    });
+    await patchItemOrFail(entry.id, { iv, enc_data: ct });
     entry.data = data;
     api.logEvent('payment.paid', { item_id: entry.id, amount: req.amount, currency: req.currency });
     await updatePendingPayHosts();

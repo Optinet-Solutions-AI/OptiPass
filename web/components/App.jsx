@@ -383,10 +383,16 @@ export default function App() {
     const { iv, ct } = await encryptJson(key, data);
     let itemId = entryId;
     if (entryId) {
-      await api.rest(`/items?id=eq.${entryId}`, {
+      // PostgREST skips rows the permission rules block without an error;
+      // ask for the row back so a blocked save isn't reported as saved.
+      const rows = await api.rest(`/items?id=eq.${entryId}&select=id`, {
         method: 'PATCH',
         body: { vault_id: vaultId, iv, enc_data: ct },
+        prefer: 'return=representation',
       });
+      if (!rows || rows.length === 0) {
+        return "Couldn't save: you have view-only access to this tool's vault. Ask one of its editors.";
+      }
       setItems((cur) => cur.map((e) => (e.id === entryId ? { ...e, vault_id: vaultId, data } : e)));
       api.logEvent('item.update', { item_id: entryId, vault_id: vaultId });
     } else {
