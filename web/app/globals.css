@@ -463,6 +463,16 @@ textarea {
   color: var(--muted);
 }
 
+.badge.low {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.payments-note {
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+
 .empty {
   text-align: center;
   padding: 56px 0;

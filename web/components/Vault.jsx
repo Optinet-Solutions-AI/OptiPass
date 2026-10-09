@@ -121,6 +121,9 @@ export default function Vault({
                           via {SSO_LABELS[entry.data.signinMethod] || 'SSO'}
                         </span>
                       )}
+                      {(entry.data.paymentRequests || []).some((r) => r.status === 'pending') && (
+                        <span className="badge low" title="Pay or record it in the OptiPass Chrome extension">payment pending</span>
+                      )}
                       {m && m.vaults.type === 'shared' && (
                         <span className="badge gray">{m.vaults.name}</span>
                       )}

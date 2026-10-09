@@ -25,6 +25,7 @@ export default function Editor({
   onSave,
   onDelete,
   onBack,
+  leaveGuardRef,
 }) {
   const writableVaults = memberships
     .filter((m) => ['manager', 'editor'].includes(m.role))
@@ -125,6 +126,21 @@ export default function Editor({
     baseline !== null &&
     snapshotOf({ vaultId, title, url, tags, signinMethod, ssoItemId, username, password, totp, secrets, notes, metrics }) !==
       baseline;
+
+  // The browser's Back button asks the same question as ours (see App).
+  useEffect(() => {
+    if (!leaveGuardRef) return undefined;
+    leaveGuardRef.current = () => {
+      if (!dirty) return false;
+      setConfirmLeave(true);
+      return true;
+    };
+    return () => {
+      leaveGuardRef.current = null;
+    };
+  });
+
+  const pendingPayments = (entry?.data.paymentRequests || []).filter((r) => r.status === 'pending');
 
   function goBack() {
     if (dirty) return setConfirmLeave(true);
@@ -393,6 +409,19 @@ export default function Editor({
           )
         )}
       </div>
+
+      <div className="monitor-head">
+        <label>Payments</label>
+      </div>
+      <p className="muted payments-note">
+        {pendingPayments.length > 0 && (
+          <>
+            <strong>Payment pending: {pendingPayments.map((r) => `${r.amount} ${r.currency}`).join(', ')}.</strong>{' '}
+          </>
+        )}
+        Payment requests, the payer&apos;s guide and payment history are handled in the OptiPass Chrome extension.
+        Saving here keeps them unchanged.
+      </p>
 
       <label htmlFor="ed-notes">Notes</label>
       <textarea id="ed-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />

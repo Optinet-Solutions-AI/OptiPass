@@ -281,7 +281,10 @@ Same login, same data, at the team's Vercel URL. Works everywhere Chrome
 isn't: view and edit tools, copy passwords and live 2FA codes, admin screens,
 API monitor refresh. Extension-only: page autofill, right-click fill, the
 element picker, the PIN, the toolbar badge, and **payments** (requesting a
-payment, the payer's guide, and payment history).
+payment, the payer's guide, and payment history). The web app does show a
+**payment pending** badge on the tool, and saving a tool there keeps its
+payment data. The browser's **Back** button moves between the web app's
+screens (editor → list); from the list it leaves the site.
 
 ---
 

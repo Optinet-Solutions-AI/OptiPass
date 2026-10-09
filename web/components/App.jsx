@@ -88,6 +88,48 @@ export default function App() {
     boot();
   }, [boot]);
 
+  // ---------- screen history ----------
+  // Browser Back/Forward move between the app's screens instead of leaving
+  // the app: opening a sub-screen pushes one history entry, leaving it (in-app
+  // Back or browser Back) pops it. The editor can veto a browser Back while
+  // it has unsaved changes - it then shows its own "unsaved changes" prompt.
+  const SUB_SCREENS = ['edit', 'settings', 'admin', 'guide'];
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  const leaveGuardRef = useRef(null); // set by the editor: returns true to stay
+  const leavingRef = useRef(false); // our own history.back(), skip the guard
+
+  function openScreen(next) {
+    if (SUB_SCREENS.includes(screenRef.current)) window.history.replaceState({ optipass: next }, '');
+    else window.history.pushState({ optipass: next }, '');
+    setScreen(next);
+  }
+
+  function backToMain() {
+    if (window.history.state?.optipass) {
+      leavingRef.current = true;
+      window.history.back(); // the popstate handler lands on the list
+    } else {
+      setScreen('main');
+    }
+  }
+
+  useEffect(() => {
+    const onPop = () => {
+      const cur = screenRef.current;
+      const ours = leavingRef.current;
+      leavingRef.current = false;
+      if (!SUB_SCREENS.includes(cur)) return;
+      if (!ours && cur === 'edit' && leaveGuardRef.current?.()) {
+        window.history.pushState({ optipass: 'edit' }, ''); // stay; the prompt is showing
+        return;
+      }
+      setScreen('main');
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   // Activity tracking + idle auto-lock
   useEffect(() => {
     const touch = () => keychain.touchActivity();
@@ -222,7 +264,7 @@ export default function App() {
     await enterMain(prof);
     showToast('Vault ready');
     if (!localStorage.getItem('optipass_setup_seen')) {
-      setScreen('guide'); // first run: walk them through installing the extension
+      openScreen('guide'); // first run: walk them through installing the extension
     }
   }
 
@@ -477,15 +519,15 @@ export default function App() {
           monitors={monitors}
           onAdd={() => {
             setEditingEntry({ id: null });
-            setScreen('edit');
+            openScreen('edit');
           }}
           onEdit={(entry) => {
             setEditingEntry(entry);
-            setScreen('edit');
+            openScreen('edit');
           }}
           onRefreshMonitor={refreshMonitor}
-          onSettings={() => setScreen('settings')}
-          onAdmin={() => setScreen('admin')}
+          onSettings={() => openScreen('settings')}
+          onAdmin={() => openScreen('admin')}
           onLock={handleLock}
         />
       )}
@@ -499,28 +541,29 @@ export default function App() {
           fetchApiValue={fetchApiValue}
           onSave={saveEntry}
           onDelete={deleteEntry}
-          onBack={() => setScreen('main')}
+          leaveGuardRef={leaveGuardRef}
+          onBack={backToMain}
         />
       )}
       {screen === 'guide' && (
         <SetupGuide
           onContinue={() => {
             localStorage.setItem('optipass_setup_seen', '1');
-            setScreen('main');
+            backToMain();
           }}
         />
       )}
       {screen === 'settings' && (
         <Settings
           {...shared}
-          onOpenGuide={() => setScreen('guide')}
+          onOpenGuide={() => openScreen('guide')}
           setSettings={(s) => {
             setSettings(s);
             keychain.saveSettings(s);
           }}
           onChangeMaster={changeMasterPassword}
           onSignOut={handleSignOut}
-          onBack={() => setScreen('main')}
+          onBack={backToMain}
         />
       )}
       {screen === 'admin' && (
@@ -529,8 +572,11 @@ export default function App() {
           refreshVaults={async () => {
             const mems = await refreshMemberships();
             await ensureVaultKeys(mems);
+            // re-read tools + monitors, or a deleted vault's tools stay listed
+            await fetchItems(vaultKeysRef.current);
+            await fetchMonitors();
           }}
-          onBack={() => setScreen('main')}
+          onBack={backToMain}
         />
       )}
       {toast && <div className="toast">{toast}</div>}
