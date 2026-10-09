@@ -586,10 +586,12 @@ textarea {
   background: var(--surface-2);
 }
 
+/* status badges sit on a wrapping line under the tool name */
 .entry-flags {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  flex-shrink: 0;
+  margin-top: 3px;
 }
 
 .entry-flags .badge {

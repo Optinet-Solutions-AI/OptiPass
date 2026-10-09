@@ -704,7 +704,10 @@ function renderList() {
     const chev = document.createElement('span');
     chev.className = 'chev' + (expanded ? ' open' : '');
 
-    head.append(avatar, info, flags, chev);
+    // Badges go on their own line under the name so they can never squeeze
+    // the name itself (a row with three badges used to show just "P").
+    if (flags.childElementCount) info.appendChild(flags);
+    head.append(avatar, info, chev);
     li.appendChild(head);
 
     if (expanded) {
