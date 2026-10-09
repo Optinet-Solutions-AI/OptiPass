@@ -13,7 +13,7 @@ import { getVersions, newer } from './lib/updates.js';
 const SESSION_KEYS = 'optipass_session_keys';
 const AUTOLOCK_ALARM = 'optipass-autolock';
 const MAINT_ALARM = 'optipass-maintenance';
-const BADGE_COLOR = '#b4544a';
+const BADGE_COLOR = '#9f433a';
 
 function ensureMaintenanceAlarm() {
   chrome.alarms.create(MAINT_ALARM, { periodInMinutes: 30, delayInMinutes: 1 });

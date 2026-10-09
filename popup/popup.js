@@ -2235,7 +2235,7 @@ function monitorIsLow(mon) {
 function updateLowBadge() {
   const low = state.settings.alertsBadge === false ? 0 : state.monitors.filter(monitorIsLow).length;
   if (low > 0) {
-    chrome.action.setBadgeBackgroundColor({ color: '#b4544a' });
+    chrome.action.setBadgeBackgroundColor({ color: '#9f433a' });
     chrome.action.setBadgeText({ text: String(low) });
   } else if (state.updateAvailable) {
     chrome.action.setBadgeBackgroundColor({ color: '#5551d8' });

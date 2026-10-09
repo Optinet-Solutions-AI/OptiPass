@@ -37,13 +37,13 @@
   --surface-2: #f1efeb;     /* input fill, hover, avatars */
   --hairline: #e8e5df;
   --text: #23221f;          /* soft charcoal */
-  --muted: #8c8983;
+  --muted: #6b6862;         /* 4.7:1+ on every light surface (WCAG AA) */
   --ink: #23221f;           /* primary actions */
   --ink-contrast: #ffffff;
   --accent: #5551d8;        /* muted indigo — focus & details */
   --accent-tint: #ecebfb;
-  --danger: #b4544a;        /* muted terracotta */
-  --danger-tint: rgba(180, 84, 74, 0.1);
+  --danger: #9f433a;        /* muted terracotta, 4.7:1+ incl. on its tint */
+  --danger-tint: rgba(159, 67, 58, 0.1);
   --ok-tint: rgba(107, 143, 113, 0.14);
   --ok-text: #4c7156;
   --shadow: rgba(35, 34, 31, 0.06);
