@@ -23,17 +23,25 @@ Day to day you'll barely type either — a 6-digit PIN unlocks the extension.
      right-click → **Extract All…** ⚠️ Windows nests a folder inside a
      folder — open them until you can see **`manifest.json`**; that inner
      folder is the one you need.
-   - **Git (auto-updates):** `git clone https://github.com/Optinet-Solutions-AI/OptiPass.git`
+   - **Git (updates with a pull):** `git clone https://github.com/Optinet-Solutions-AI/OptiPass.git`
 2. In Chrome open `chrome://extensions`
 3. Turn ON **Developer mode** (top-right toggle)
-4. Click **Load unpacked** and select the folder **that contains
-   `manifest.json`** (if Chrome says "Manifest file is missing", you picked
-   the outer wrapper — go one level deeper)
+4. Click **Load unpacked**. Chrome's folder picker shows **folders only**
+   (never `manifest.json`): open folders until you see **`icons`, `lib` and
+   `popup`**, then click **Select Folder** without opening any of them. (If
+   Chrome says "Manifest file is missing", you picked the outer wrapper — go
+   one level deeper.)
 5. Click the puzzle-piece 🧩 in the toolbar and **pin** OptiPass
 
-**Updates are automatic.** When a new version is pushed, run `git pull` in the
-folder (or wait — teammates' pulls land the files) and OptiPass reloads itself.
-You can force a check in **Settings → Check for updates**. You never reinstall.
+**Updates.** When a new version is out, the OptiPass icon shows **NEW** and the
+list shows "OptiPass vX is available" with **How to update**:
+- **Git install:** run `git pull` in the folder; OptiPass reloads itself.
+- **Zip install:** zip installs do **not** update themselves. Download the zip
+  again, extract it, and copy everything inside the inner `OptiPass-main`
+  folder over your current OptiPass folder (same place); OptiPass then reloads
+  itself. Don't Load unpacked a second folder.
+
+You can check any time in **Settings → Check for updates**.
 
 > The folder must stay where it is — moving or deleting it breaks the
 > extension until you Load unpacked again.
@@ -187,8 +195,10 @@ red badge appears on the OptiPass toolbar icon.
 - **Request a payment**: enter amount/currency → **"Request payment &
   copy summary"** → paste the summary in WhatsApp. The request is saved
   straight away (no need to press Save), and the summary is copied only once
-  it's stored. The summary includes the tool's payment link and login
-  credentials. The request stays **pending** (badge on the tool) until marked
+  it's stored. The summary has the tool, amount and payment link but **never
+  the username or password** (nothing secret goes into WhatsApp): the payer
+  gets the login from OptiPass's payment guide, so they need access to the
+  tool's vault. The request stays **pending** (badge on the tool) until marked
   paid. Marking a request paid or cancelling it is also saved immediately.
 - **For the person paying**: when you open that tool's payment page, OptiPass
   pops up a **guide window** with the amount, open-page button, copy
@@ -316,7 +326,7 @@ are actions with their own buttons).
 | Auto-lock | How long without activity before locking: 1 minute … 4 hours, or Never. Saved as soon as you pick |
 | Quick unlock PIN | Set / change / remove for this browser |
 | Change master password | Re-encrypts your keys; vault data untouched. The new one needs 12+ characters. If saving fails (e.g. offline) you're told so and the old one keeps working |
-| Updates | Auto-update toggle (default on) + manual check |
+| Updates | Shows how to update when a new version is out (git: pull; zip: download again). The toggle (default on) applies a new version as soon as its files are in the folder. Manual check button |
 | Alerts | Toolbar badge for LOW metrics |
 | Help / tour | This guide's short version + the interactive tour |
 

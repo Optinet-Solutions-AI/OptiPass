@@ -206,7 +206,10 @@ async function boot() {
   maybeAutoReload(); // apply new files after a git pull, silently
   chrome.storage.session
     .get('optipass_update')
-    .then((o) => (state.updateAvailable = o.optipass_update || null))
+    .then((o) => {
+      state.updateAvailable = o.optipass_update || null;
+      showUpdateBanner();
+    })
     .catch(() => {});
   state.activeHost = await getActiveHost();
 
@@ -1323,8 +1326,9 @@ function renderTopupList() {
 
 // ---------- payment requests (pending top-ups for Alex & co) ----------
 
-// Credentials for the summary come from the editor form; OAuth tools
-// pull the login of the linked identity account instead.
+// The summary goes into WhatsApp, so it never contains the login itself:
+// the payer opens OptiPass (the payment guide offers Copy login / Copy
+// password to vault members). OAuth tools name the account they sign in with.
 function summaryContext() {
   const ctx = {
     title: $('f-title').value.trim() || 'tool',
@@ -1333,11 +1337,6 @@ function summaryContext() {
   if ($('f-signin').value !== 'password') {
     const linked = state.items.find((e) => e.id === $('f-sso-item').value);
     ctx.oauth = linked?.data.title || 'OAuth';
-    ctx.username = linked?.data.username || linked?.data.ssoEmail || '';
-    ctx.password = linked?.data.password || '';
-  } else {
-    ctx.username = $('f-username').value.trim();
-    ctx.password = $('f-password').value;
   }
   return ctx;
 }
@@ -1349,8 +1348,7 @@ function requestSummary(req, ctx) {
   ];
   if (ctx.link) lines.push(`Payment link: ${ctx.link.includes('://') ? ctx.link : `https://${ctx.link}`}`);
   if (ctx.oauth) lines.push(`Login with ${ctx.oauth}`);
-  if (ctx.username) lines.push(`username: ${ctx.username}`);
-  if (ctx.password) lines.push(`password: ${ctx.password}`);
+  lines.push('Login: in OptiPass - open the payment link and the payment guide pops up with it');
   return lines.join('\n');
 }
 
@@ -1734,15 +1732,16 @@ async function loadSettingsScreen() {
   $('set-autoupdate').checked = state.settings.autoUpdate !== false;
   $('set-alerts').checked = state.settings.alertsBadge !== false;
   $('upd-status').textContent = state.updateAvailable
-    ? `v${state.updateAvailable} is available - run "git pull" in the OptiPass folder (it applies automatically).`
+    ? `v${state.updateAvailable} is available (you have v${chrome.runtime.getManifest().version}). How to update:`
     : `Running v${chrome.runtime.getManifest().version}`;
+  $('upd-howto').classList.toggle('hidden', !state.updateAvailable);
   $('btn-reload-ext').classList.add('hidden');
 }
 
 $('set-autoupdate').addEventListener('change', async (e) => {
   state.settings.autoUpdate = e.target.checked;
   await keychain.saveSettings(state.settings);
-  toast(e.target.checked ? 'Saved - updates install automatically' : 'Saved - automatic updates off');
+  toast(e.target.checked ? 'Saved - new versions apply as soon as their files arrive' : 'Saved - new versions wait for Reload now');
 });
 
 $('set-alerts').addEventListener('change', async (e) => {
@@ -1759,13 +1758,27 @@ $('btn-check-updates').addEventListener('click', async () => {
     $('btn-reload-ext').classList.remove('hidden');
     $('upd-status').textContent = `v${disk} is ready in the folder - click Reload now to apply.`;
   } else if (remote && newer(remote, running)) {
-    $('upd-status').textContent = `v${remote} is available. Run "git pull" in the OptiPass folder (or re-download it) and it applies automatically.`;
+    $('upd-status').textContent = `v${remote} is available (you have v${running}). How to update:`;
+    $('upd-howto').classList.remove('hidden');
   } else {
     $('upd-status').textContent = `Up to date - v${running}.`;
   }
 });
 
 $('btn-reload-ext').addEventListener('click', () => chrome.runtime.reload());
+
+// Zip installs don't update themselves, so say so where people look: a banner
+// on the list whenever a newer version is out, leading to the steps in Settings.
+function showUpdateBanner() {
+  const v = state.updateAvailable;
+  $('update-banner').classList.toggle('hidden', !v);
+  if (v) $('update-banner-text').textContent = `OptiPass v${v} is available.`;
+}
+$('btn-update-how').addEventListener('click', async () => {
+  await loadSettingsScreen();
+  showScreen('settings');
+  $('sec-updates').scrollIntoView({ block: 'start' });
+});
 $('btn-help').addEventListener('click', () => showScreen('help'));
 $('btn-help-back').addEventListener('click', () => showScreen('settings'));
 $('btn-tour').addEventListener('click', () => {
@@ -3076,7 +3089,7 @@ const TOUR_STEPS = [
   { screen: 'edit', el: 'acc-monitors', title: 'Credit & usage monitors', text: 'Track credits, bandwidth, RAM - anything with a number - read from the tool\'s API or picked off its dashboard. Below your threshold it turns red and badges the OptiPass icon.' },
   { screen: 'edit', el: 'acc-payments', title: 'Payments & top-ups', text: 'Keep the payment link, record every top-up, and request payments: the payer gets a guide window with everything needed, and marking it paid files the history automatically.' },
   { screen: 'settings', el: 'sec-pin', title: 'Quick unlock PIN', text: 'Daily unlocking is just 6 digits. Five wrong tries removes the PIN and asks for your master password (changeable here too).' },
-  { screen: 'settings', el: 'sec-updates', title: 'Updates', text: 'OptiPass updates itself. If your version falls behind, the toolbar icon shows a NEW badge and this section tells you what to do.' },
+  { screen: 'settings', el: 'sec-updates', title: 'Updates', text: 'When a new version is out, the toolbar icon shows a NEW badge, the list shows a banner, and this section says how to update (git installs update with a pull; zip installs need the new zip).' },
   { screen: 'main', el: 'btn-admin', title: 'Team administration', text: 'Invite teammates with one-click signup links, manage roles, create team vaults, and add members.', skip: () => $('btn-admin').classList.contains('hidden') },
   { screen: 'main', el: 'btn-lock', title: 'Lock', text: 'Locks the vault (it also auto-locks after idle). That\'s the tour - the written manual lives in Settings > Help.' },
 ];

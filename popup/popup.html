@@ -129,6 +129,10 @@
       <button id="btn-settings" class="btn icon" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button id="btn-admin" class="btn icon hidden" title="Team administration"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
     </div>
+    <div id="update-banner" class="update-banner hidden" role="status">
+      <span id="update-banner-text"></span>
+      <button id="btn-update-how" class="btn small" type="button">How to update</button>
+    </div>
     <ul id="entry-list"></ul>
     <div id="pager" class="pager hidden"></div>
     <div id="empty-state" class="empty hidden">
@@ -390,7 +394,11 @@
     <section id="sec-updates">
       <h3>Updates</h3>
       <p class="muted" id="upd-status"></p>
-      <label class="checkbox"><input type="checkbox" id="set-autoupdate" /> Update automatically (recommended)</label>
+      <div id="upd-howto" class="notice hidden">
+        <p><strong>Installed with git:</strong> run <code>git pull</code> in the OptiPass folder - OptiPass reloads itself.</p>
+        <p><strong>Installed from the zip:</strong> <a href="https://github.com/Optinet-Solutions-AI/OptiPass/archive/refs/heads/main.zip" target="_blank" rel="noopener">download the zip again</a>, extract it, and copy everything inside the inner <code>OptiPass-main</code> folder over your current OptiPass folder (same place - don't load a new folder). OptiPass then reloads itself, or click Reload now.</p>
+      </div>
+      <label class="checkbox"><input type="checkbox" id="set-autoupdate" /> Apply a new version as soon as its files are in the folder (recommended)</label>
       <div class="row">
         <button id="btn-check-updates" class="btn grow">Check for updates</button>
         <button id="btn-reload-ext" class="btn grow hidden">Reload now</button>

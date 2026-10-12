@@ -57,9 +57,10 @@ export default function SetupGuide({ onContinue }) {
           <li>Turn ON <strong>Developer mode</strong> — the toggle in the top-right corner</li>
           <li>Click <strong>Load unpacked</strong> (top-left)</li>
           <li>
-            Navigate <em>into</em> the extracted folders until you&apos;re inside the one showing{' '}
-            <code>manifest.json</code>, <code>popup</code>, <code>icons</code>… and click{' '}
-            <strong>Select Folder</strong>
+            Chrome&apos;s folder picker shows <strong>folders only</strong> (you won&apos;t see{' '}
+            <code>manifest.json</code> there). Open the extracted folders until you see the folders{' '}
+            <code>icons</code>, <code>lib</code> and <code>popup</code>, then click{' '}
+            <strong>Select Folder</strong> without opening any of them
           </li>
           <li>
             If Chrome says <em>&quot;Manifest file is missing&quot;</em>, you selected the outer
@@ -90,9 +91,9 @@ export default function SetupGuide({ onContinue }) {
       <section>
         <h3>Good to know</h3>
         <p className="muted">
-          <strong>Updates:</strong> git users get them automatically after a pull; zip users
-          re-download this zip and replace the folder&apos;s contents (OptiPass notices and reloads
-          itself). <strong>Filling logins:</strong> on any login page, right-click the username
+          <strong>Updates:</strong> zip installs don&apos;t update themselves. When OptiPass shows
+          &quot;a new version is available&quot;, download this zip again and copy its files over the
+          same folder (OptiPass then reloads itself); git users just run <code>git pull</code>. <strong>Filling logins:</strong> on any login page, right-click the username
           field → <em>OptiPass – fill login</em>. <strong>Never share</strong> your master
           password — it can&apos;t be recovered, so store it somewhere safe.
         </p>
