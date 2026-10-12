@@ -68,7 +68,9 @@ extension:
 ## 3. Logging in and unlocking
 
 - **Unlock (daily):** click the icon → type your 6-digit **PIN**. Wrong PIN
-  five times → the PIN is removed and your master password is required.
+  five times → the PIN is removed and your master password is required;
+  right after unlocking, OptiPass offers to set a new PIN. (Signing out also
+  removes the PIN, and a new one is offered at the next sign-in.)
 - **Master password:** used on a new browser, after a PIN wipe, or via
   "Use master password instead".
 - **Auto-lock:** the vault locks after 5 minutes idle (change it in Settings →
@@ -346,7 +348,8 @@ by 1Password and Bitwarden:
 ## 12. Troubleshooting
 
 - **Forgot your PIN** → "Use master password instead" (5 wrong tries resets
-  the PIN automatically).
+  the PIN automatically), then set a new PIN when it's offered — or later in
+  Settings.
 - **Forgot your account password** → an admin resets it from Supabase.
 - **Forgot your master password** → it cannot be recovered. An admin resets
   your keys (see SETUP.md); your Personal vault is lost, team vaults return

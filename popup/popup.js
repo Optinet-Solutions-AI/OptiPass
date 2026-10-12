@@ -339,6 +339,7 @@ $('btn-signout').addEventListener('click', doSignOut);
 async function doSignOut() {
   await keychain.lock();
   await keychain.clearPin();
+  await reofferPin(); // the PIN is gone, so offer one again at the next sign-in
   await api.signOut();
   state.uid = null;
   state.profile = null;
@@ -392,10 +393,7 @@ $('btn-ms-create').addEventListener('click', async () => {
     api.logEvent('keys.setup');
     // Go straight to the daily-driver PIN.
     if (!(await keychain.hasPin()) && !state.settings.pinOffered) {
-      $('ps-pin').value = '';
-      $('ps-pin2').value = '';
-      hideError('ps-error');
-      showScreen('pin-setup');
+      showPinSetup();
       return;
     }
     await enterMain();
@@ -423,10 +421,7 @@ async function doUnlock() {
     $('unlock-pw').value = '';
     // Offer a quick-unlock PIN once per browser.
     if (!(await keychain.hasPin()) && !state.settings.pinOffered) {
-      $('ps-pin').value = '';
-      $('ps-pin2').value = '';
-      hideError('ps-error');
-      showScreen('pin-setup');
+      showPinSetup();
       return;
     }
     await enterMain();
@@ -444,6 +439,24 @@ $('unlock-pw').addEventListener('keydown', (e) => {
 });
 
 // ---------- quick-unlock PIN ----------
+
+// Offered once per browser - and again whenever the PIN is lost to the
+// 5-try wipe or a sign-out (not when the user removes it in Settings).
+let pinWasWiped = false;
+
+function showPinSetup() {
+  $('ps-pin').value = '';
+  $('ps-pin2').value = '';
+  hideError('ps-error');
+  $('ps-wiped').classList.toggle('hidden', !pinWasWiped);
+  pinWasWiped = false;
+  showScreen('pin-setup');
+}
+
+async function reofferPin() {
+  state.settings.pinOffered = false;
+  await keychain.saveSettings(state.settings);
+}
 
 const PIN_RE = /^\d{6}$/;
 
@@ -467,8 +480,10 @@ $('unlock-pin').addEventListener('input', async () => {
   } catch (err) {
     $('unlock-pin').value = '';
     if (err.code === 'PIN_WIPED') {
+      pinWasWiped = true;
+      await reofferPin();
       await showUnlockScreen(true);
-      showError('unlock-error', 'Too many wrong attempts - the PIN was removed. Unlock with your master password.');
+      showError('unlock-error', 'Too many wrong attempts - the PIN was removed. Unlock with your master password, then you can set a new PIN.');
     } else {
       showError('unlock-error', `Wrong PIN - ${err.attemptsLeft} attempt${err.attemptsLeft === 1 ? '' : 's'} left.`);
     }
