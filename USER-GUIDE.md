@@ -58,8 +58,10 @@ extension:
 4. You're in. Your private **Personal** vault is created automatically.
 5. OptiPass offers a **6-digit PIN** for this browser — take it. It's how
    you'll unlock every day.
-6. A short **interactive tour** walks you around the first time (replay it
-   anytime from Settings → Take the tour).
+6. A short **interactive tour** walks you around once your list has its
+   first tool (add one, go back to the list, and it starts). It runs once per
+   account, not once per browser — replay it anytime from Settings → Take
+   the tour.
 
 ---
 

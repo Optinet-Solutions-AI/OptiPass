@@ -612,11 +612,7 @@ async function enterMain() {
   }
   showScreen('main');
   autoCaptureMonitors(); // fire-and-forget refresh for the current site
-  if (!state.settings.tourDone) {
-    state.settings.tourDone = true;
-    keychain.saveSettings(state.settings);
-    startTour();
-  }
+  maybeStartTour();
 }
 
 // ---------- main list ----------
@@ -1164,6 +1160,7 @@ function leaveEditor() {
   editBaseline = null;
   $('edit-unsaved').classList.add('hidden');
   showScreen('main');
+  maybeStartTour(); // first tool just added -> now there's something to show
 }
 
 $('btn-edit-back').addEventListener('click', () => {
@@ -1590,6 +1587,7 @@ $('btn-save').addEventListener('click', async () => {
     }
     showScreen('main');
     toast(saveMsg);
+    maybeStartTour();
   } catch (err) {
     showError('edit-error', err.message);
   } finally {
@@ -2908,7 +2906,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 const TOUR_STEPS = [
   { screen: 'main', el: 'search', title: 'Search', text: 'The fastest way to any tool - matches names, usernames, links, and tags.' },
-  { screen: 'main', el: 'entry-list', title: 'Your tools', text: 'Click a row to expand it: fill the login on the current site, copy the username, password, or live 2FA code, open the tool, or edit it. Credit readings appear underneath and turn red when LOW. Tip: on any login page, right-click a field and pick "OptiPass - fill login".' },
+  { screen: 'main', el: 'entry-list', title: 'Your tools', text: () => (state.items.length ? '' : 'Your tools will be listed here once you add one. ') + 'Click a row to expand it: fill the login on the current site, copy the username, password, or live 2FA code, open the tool, or edit it. Credit readings appear underneath and turn red when LOW. Tip: on any login page, right-click a field and pick "OptiPass - fill login".' },
   { screen: 'main', el: 'tag-filter', title: 'Tags', text: 'Tag tools by project in the editor, then filter them here.', skip: () => $('tag-filter').classList.contains('hidden') },
   { screen: 'main', el: 'btn-window', title: 'Open in a window', text: 'Runs OptiPass in its own window that stays open while you browse - used for long edits, on-page picking, and payment guides.' },
   { screen: 'main', el: 'btn-add', title: 'Add a tool', text: 'Start with the basics; after saving you can add everything else. Let\'s look inside the editor...' },
@@ -2926,6 +2924,33 @@ const TOUR_STEPS = [
 let tourStep = 0;
 let tourEls = null;
 let tourScreenShown = null;
+
+// Runs once per account, not per browser: "done" is kept on the profile
+// (tour_done, migration 008) as well as locally. It waits for the first
+// tool, so "Your tools" never spotlights an empty list.
+function maybeStartTour() {
+  if (tourEls || !state.profile) return;
+  if (state.settings.tourDone || state.profile.tour_done) {
+    if (state.profile.tour_done === false) markTourDone(); // seen here before the profile flag existed
+    return;
+  }
+  if (!state.items.length) return;
+  markTourDone();
+  startTour();
+}
+
+function markTourDone() {
+  state.settings.tourDone = true;
+  keychain.saveSettings(state.settings);
+  if (state.profile.tour_done === true) return;
+  state.profile.tour_done = true;
+  // Fails harmlessly until migration 008 adds the column.
+  api.rest(`/profiles?id=eq.${state.uid}`, { method: 'PATCH', body: { tour_done: true } }).catch(() => {});
+}
+
+function tourStepShown(step) {
+  return !(step.skip && step.skip());
+}
 
 function startTour() {
   endTourOverlay();
@@ -2969,7 +2994,7 @@ async function applyTourScreen(step) {
 
 async function renderTourStep(dir = 1) {
   if (!tourEls) return;
-  while (TOUR_STEPS[tourStep] && TOUR_STEPS[tourStep].skip && TOUR_STEPS[tourStep].skip()) {
+  while (TOUR_STEPS[tourStep] && !tourStepShown(TOUR_STEPS[tourStep])) {
     tourStep += dir;
   }
   if (tourStep < 0) tourStep = 0;
@@ -3004,13 +3029,17 @@ async function renderTourStep(dir = 1) {
   h.textContent = step.title;
   const p = document.createElement('p');
   p.className = 'muted';
-  p.textContent = step.text;
+  p.textContent = typeof step.text === 'function' ? step.text() : step.text;
   const nav = document.createElement('div');
   nav.className = 'row';
   const count = document.createElement('span');
   count.className = 'muted';
   count.style.flex = '1';
-  count.textContent = `${tourStep + 1} / ${TOUR_STEPS.length}`;
+  // Number only the steps this user sees (e.g. no Tags step without tags).
+  const shown = TOUR_STEPS.filter(tourStepShown);
+  const isFirst = shown[0] === step;
+  const isLast = shown[shown.length - 1] === step;
+  count.textContent = `${shown.indexOf(step) + 1} / ${shown.length}`;
   const skip = document.createElement('button');
   skip.className = 'btn link';
   skip.textContent = 'Skip';
@@ -3018,16 +3047,16 @@ async function renderTourStep(dir = 1) {
   const back = document.createElement('button');
   back.className = 'btn small';
   back.textContent = 'Back';
-  back.disabled = tourStep === 0;
+  back.disabled = isFirst;
   back.addEventListener('click', () => {
     tourStep--;
     renderTourStep(-1);
   });
   const next = document.createElement('button');
   next.className = 'btn small primary';
-  next.textContent = tourStep === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+  next.textContent = isLast ? 'Done' : 'Next';
   next.addEventListener('click', () => {
-    if (tourStep === TOUR_STEPS.length - 1) return endTour();
+    if (isLast) return endTour();
     tourStep++;
     renderTourStep(1);
   });

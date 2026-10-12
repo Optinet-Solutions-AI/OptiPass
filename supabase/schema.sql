@@ -27,6 +27,7 @@ create table public.profiles (
   role text not null default 'member' check (role in ('super_admin', 'admin', 'member')),
   status text not null default 'pending' check (status in ('pending', 'active', 'disabled')),
   theme text not null default 'light' check (theme in ('light', 'dark')),
+  tour_done boolean not null default false, -- extension tour seen (any browser)
   public_key jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -337,7 +338,7 @@ revoke all on all tables in schema public from anon;
 -- profiles rows are only created by the signup trigger, and users may
 -- self-edit only cosmetic/key columns; role & status go through the RPC
 revoke insert, update, delete on public.profiles from authenticated;
-grant update (display_name, theme, public_key) on public.profiles to authenticated;
+grant update (display_name, theme, tour_done, public_key) on public.profiles to authenticated;
 
 -- the audit log is append-only
 revoke update, delete on public.audit_log from authenticated;
