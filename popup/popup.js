@@ -910,16 +910,46 @@ function actionBtn(iconName, titleText, onClick) {
 
 async function copyText(text, message) {
   if (!text) return toast('Nothing to copy');
+  clearTimeout(totpSwapTimer); // a newer copy wins over a pending 2FA swap
   await navigator.clipboard.writeText(text);
   toast(message);
   keychain.resetAutoLock();
 }
 
-async function copyTotp(entry) {
-  const t = await generateTotp(entry.data.totp);
-  if (!t) return toast('This tool has an invalid 2FA key');
+// A 2FA code with only a few seconds left can expire before it's pasted.
+// Copy it right away (in case OptiPass closes), and swap in the next code
+// the moment it appears.
+const TOTP_FRESH_SECONDS = 5;
+let totpSwapTimer = null;
+
+async function copyTotpCode(secret, swappedMsg) {
+  clearTimeout(totpSwapTimer);
+  const t = await generateTotp(secret);
+  if (!t) return null;
   await navigator.clipboard.writeText(t.code);
-  toast(`2FA code copied - valid ${t.secondsLeft}s`);
+  t.swapping = t.secondsLeft < TOTP_FRESH_SECONDS;
+  if (t.swapping) {
+    totpSwapTimer = setTimeout(async () => {
+      const next = await generateTotp(secret);
+      try {
+        await navigator.clipboard.writeText(next.code);
+        toast(swappedMsg(next));
+      } catch {
+        /* clipboard unavailable - the first code is still there */
+      }
+    }, t.secondsLeft * 1000 + 200);
+  }
+  return t;
+}
+
+async function copyTotp(entry) {
+  const t = await copyTotpCode(entry.data.totp, (n) => `New 2FA code copied - valid ${n.secondsLeft}s`);
+  if (!t) return toast('This tool has an invalid 2FA key');
+  toast(
+    t.swapping
+      ? `2FA code copied - it changes in ${t.secondsLeft}s, the new one is copied then`
+      : `2FA code copied - valid ${t.secondsLeft}s`
+  );
   keychain.resetAutoLock();
 }
 
@@ -1031,10 +1061,11 @@ async function fillCredentials(entry) {
       // clipboard so the 2FA prompt is just a paste away.
       let msg = 'Filled';
       if (entry.data.totp) {
-        const t = await generateTotp(entry.data.totp);
+        const t = await copyTotpCode(entry.data.totp, (n) => `New 2FA code copied, paste when asked (${n.secondsLeft}s)`);
         if (t) {
-          await navigator.clipboard.writeText(t.code);
-          msg = `Filled - 2FA code copied, paste when asked (${t.secondsLeft}s)`;
+          msg = t.swapping
+            ? `Filled - 2FA code copied; it changes in ${t.secondsLeft}s, the new one is copied then`
+            : `Filled - 2FA code copied, paste when asked (${t.secondsLeft}s)`;
         }
       }
       toast(msg);

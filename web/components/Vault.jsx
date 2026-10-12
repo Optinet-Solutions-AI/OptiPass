@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { generateTotp } from '@/lib/crypto';
 import { Icon, formatMonitorValue, monitorIsLow, timeAgo } from '@/components/ui';
+
+const TOTP_FRESH_SECONDS = 5;
 
 export default function Vault({
   profile,
@@ -20,6 +22,7 @@ export default function Vault({
   onLock,
 }) {
   const [query, setQuery] = useState('');
+  const totpSwap = useRef(null);
   const [tagFilter, setTagFilter] = useState('all');
 
   const allTags = [...new Set(items.flatMap((e) => e.data.tags || []))].sort((a, b) =>
@@ -41,15 +44,29 @@ export default function Vault({
 
   async function copy(text, msg) {
     if (!text) return showToast('Nothing to copy');
+    clearTimeout(totpSwap.current); // a newer copy wins over a pending 2FA swap
     await navigator.clipboard.writeText(text);
     showToast(msg);
   }
 
+  // A 2FA code with only a few seconds left can expire before it's pasted:
+  // copy it now and swap in the next code the moment it appears.
   async function copyTotp(entry) {
+    clearTimeout(totpSwap.current);
     const t = await generateTotp(entry.data.totp);
     if (!t) return showToast('This tool has an invalid 2FA key');
     await navigator.clipboard.writeText(t.code);
-    showToast(`2FA code copied - valid ${t.secondsLeft}s`);
+    if (t.secondsLeft >= TOTP_FRESH_SECONDS) return showToast(`2FA code copied - valid ${t.secondsLeft}s`);
+    showToast(`2FA code copied - it changes in ${t.secondsLeft}s, the new one is copied then`);
+    totpSwap.current = setTimeout(async () => {
+      const next = await generateTotp(entry.data.totp);
+      try {
+        await navigator.clipboard.writeText(next.code);
+        showToast(`New 2FA code copied - valid ${next.secondsLeft}s`);
+      } catch {
+        /* tab not focused - the first code is still there */
+      }
+    }, t.secondsLeft * 1000 + 200);
   }
 
   const isAdmin = ['admin', 'super_admin'].includes(profile?.role);

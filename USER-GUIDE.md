@@ -155,7 +155,10 @@ Replace Google Authenticator: when a site offers authenticator-app 2FA, choose
 **"enter code manually"**, copy the setup key, and paste it here. OptiPass
 shows the rotating 6-digit code with a countdown. Save the site's **recovery
 codes** into Notes. From then on, Fill auto-copies the current code, and the
-**2FA code** button copies it anytime. Team vault = the whole team can pass 2FA.
+**2FA code** button copies it anytime. If the code has less than 5 seconds
+left, OptiPass copies it and then puts the **next** code on the clipboard as
+soon as it appears (keep OptiPass open for those few seconds). Team vault =
+the whole team can pass 2FA.
 > Keep the 2FA of *root* accounts (the email/Google account that recovers
 > everything else) on a phone as well — never only in OptiPass.
 
