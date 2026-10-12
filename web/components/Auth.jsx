@@ -50,6 +50,18 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
     }
   }, []);
 
+  // The server ended the session (e.g. it expired): say so instead of
+  // dropping the user on a blank sign-in form.
+  useEffect(() => {
+    if (screen !== 'login') return;
+    const expired = api.takeExpiredSession();
+    if (!expired) return;
+    if (expired.email) setEmail(expired.email);
+    setMode('signin');
+    setOk(false);
+    setError('Your session expired - please sign in again.');
+  }, [screen]);
+
   async function submitLogin() {
     if (busy) return; // already submitting (e.g. Enter pressed twice)
     setError(null);

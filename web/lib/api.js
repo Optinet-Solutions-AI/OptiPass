@@ -4,6 +4,7 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config';
 
 const AUTH_STORE = 'optipass_auth';
+const EXPIRED_STORE = 'optipass_session_expired';
 
 function readStore() {
   try {
@@ -15,6 +16,7 @@ function readStore() {
 
 function writeStore(s) {
   localStorage.setItem(AUTH_STORE, JSON.stringify(s));
+  localStorage.removeItem(EXPIRED_STORE); // signed in again
 }
 
 function clearStore() {
@@ -166,12 +168,29 @@ export async function getSession() {
       });
       s = normalizeSession(data);
       writeStore(s);
-    } catch {
+    } catch (err) {
+      // Offline (no HTTP status): keep the session and retry next time -
+      // being offline for a moment shouldn't sign anyone out.
+      if (!err.status) return s;
+      // The server ended the session: remember it so sign-in can say why.
       clearStore();
+      localStorage.setItem(EXPIRED_STORE, JSON.stringify({ email: s.user?.email || '' }));
       return null;
     }
   }
   return s;
+}
+
+// Set once when the server ended the session; read (and cleared) by the
+// sign-in screen to explain why the user is signed out.
+export function takeExpiredSession() {
+  try {
+    const v = JSON.parse(localStorage.getItem(EXPIRED_STORE));
+    localStorage.removeItem(EXPIRED_STORE);
+    return v;
+  } catch {
+    return null;
+  }
 }
 
 export async function signOut() {

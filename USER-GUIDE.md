@@ -360,6 +360,9 @@ by 1Password and Bitwarden:
 - **Forgot your PIN** → "Use master password instead" (5 wrong tries resets
   the PIN automatically), then set a new PIN when it's offered — or later in
   Settings.
+- **"Your session expired - please sign in again"** → your sign-in ran out
+  (or was ended by an admin); sign in again with your account password. Being
+  offline for a while does *not* sign you out.
 - **Forgot your account password** → an admin resets it from Supabase.
 - **Forgot your master password** → it cannot be recovered. An admin resets
   your keys (see SETUP.md); your Personal vault is lost, team vaults return

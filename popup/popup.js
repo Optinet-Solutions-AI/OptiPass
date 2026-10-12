@@ -213,7 +213,18 @@ async function boot() {
   if (!api.isConfigured()) return showScreen('config');
 
   const session = await api.getSession();
-  if (!session) return showScreen('login');
+  if (!session) {
+    showScreen('login');
+    const expired = await api.takeExpiredSession();
+    if (expired) {
+      if (expired.email) {
+        $('login-email').value = expired.email;
+        setTimeout(() => $('login-pw').focus(), 60);
+      }
+      showError('login-error', 'Your session expired - please sign in again.');
+    }
+    return;
+  }
   state.uid = session.user.id;
 
   let profile;
