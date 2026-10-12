@@ -1052,3 +1052,9 @@ section input[type="password"] {
   max-width: 90%;
   text-align: center;
 }
+
+/* Settings save as you change them (L7) */
+.settings-note {
+  margin: 2px 0 10px;
+  font-size: 12px;
+}

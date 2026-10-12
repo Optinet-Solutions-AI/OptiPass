@@ -704,3 +704,9 @@ section h3 {
   letter-spacing: 0;
   color: var(--danger);
 }
+
+/* Settings save as you change them (L7) */
+.settings-note {
+  margin: 2px 0 10px;
+  font-size: 12px;
+}

@@ -300,9 +300,13 @@ screens (editor → list); from the list it leaves the site.
 
 ## 10. Settings reference
 
+Every setting saves as soon as you change it and confirms with "Saved - …";
+there are no Save buttons (setting a PIN and changing the master password
+are actions with their own buttons).
+
 | Setting | Notes |
 |---|---|
-| Display name | Shown to teammates |
+| Display name | Shown to teammates. Saved a moment after you stop typing (or press Enter) |
 | Theme | Light (default) / dark — follows you across devices |
 | Auto-lock | How long without activity before locking: 1 minute … 4 hours, or Never. Saved as soon as you pick |
 | Quick unlock PIN | Set / change / remove for this browser |

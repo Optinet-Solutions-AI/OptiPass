@@ -564,6 +564,7 @@ export default function App() {
           onChangeMaster={changeMasterPassword}
           onSignOut={handleSignOut}
           onBack={backToMain}
+          setProfile={setProfile}
         />
       )}
       {screen === 'admin' && (

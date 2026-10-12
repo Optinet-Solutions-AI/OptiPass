@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as api from '@/lib/api';
 import { Icon } from '@/components/ui';
 
@@ -20,6 +20,7 @@ export default function Settings({
   settings,
   setSettings,
   setTheme,
+  setProfile,
   showToast,
   uid,
   onChangeMaster,
@@ -33,6 +34,27 @@ export default function Settings({
   const [newPw2, setNewPw2] = useState('');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const nameTimer = useRef(null);
+  const savedName = useRef(profile?.display_name || '');
+
+  // Every setting saves as you change it and says so - no Save buttons.
+  // The name saves a moment after typing stops, or on Enter / leaving the field.
+  async function saveName(value = name) {
+    clearTimeout(nameTimer.current);
+    const display_name = value.trim();
+    const before = savedName.current;
+    if (display_name === before) return;
+    savedName.current = display_name; // set first so overlapping triggers don't save twice
+    try {
+      await api.rest(`/profiles?id=eq.${uid}`, { method: 'PATCH', body: { display_name } });
+      setProfile((p) => (p ? { ...p, display_name } : p));
+      showToast(display_name ? `Saved - teammates see you as "${display_name}"` : 'Saved - teammates see your email');
+    } catch (err) {
+      savedName.current = before;
+      showToast(err.message);
+    }
+  }
+  useEffect(() => () => clearTimeout(nameTimer.current), []);
 
   async function changeMaster() {
     setMsg(null);
@@ -58,29 +80,39 @@ export default function Settings({
         <button className="btn icon" title="Back" aria-label="Back" onClick={onBack}><Icon name="back" /></button>
         <h2>Settings</h2>
       </header>
+      <p className="muted settings-note">Changes save automatically.</p>
 
       <section>
         <h3>Account</h3>
         <p className="muted">Signed in as {profile?.email} ({profile?.role?.replace('_', ' ')})</p>
-        <div className="row">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" aria-label="Display name" />
-          <button
-            className="btn"
-            onClick={async () => {
-              await api.rest(`/profiles?id=eq.${uid}`, { method: 'PATCH', body: { display_name: name.trim() } });
-              showToast('Name saved');
-            }}
-          >
-            Save
-          </button>
-        </div>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => {
+            const v = e.target.value;
+            setName(v);
+            clearTimeout(nameTimer.current);
+            nameTimer.current = setTimeout(() => saveName(v), 1000);
+          }}
+          onBlur={() => saveName()}
+          onKeyDown={(e) => e.key === 'Enter' && saveName()}
+          placeholder="Display name"
+          aria-label="Display name"
+        />
       </section>
 
       <section>
         <h3>Appearance</h3>
         <div className="row">
           <label className="inline muted" htmlFor="set-theme" style={{ flex: 1, margin: 0, color: 'var(--muted)' }}>Theme</label>
-          <select id="set-theme" value={settings.theme || 'light'} onChange={(e) => setTheme(e.target.value)}>
+          <select
+            id="set-theme"
+            value={settings.theme || 'light'}
+            onChange={(e) => {
+              setTheme(e.target.value);
+              showToast(`Saved - ${e.target.value} theme`);
+            }}
+          >
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>

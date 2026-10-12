@@ -1723,12 +1723,14 @@ async function loadSettingsScreen() {
 $('set-autoupdate').addEventListener('change', async (e) => {
   state.settings.autoUpdate = e.target.checked;
   await keychain.saveSettings(state.settings);
+  toast(e.target.checked ? 'Saved - updates install automatically' : 'Saved - automatic updates off');
 });
 
 $('set-alerts').addEventListener('change', async (e) => {
   state.settings.alertsBadge = e.target.checked;
   await keychain.saveSettings(state.settings);
   updateLowBadge();
+  toast(e.target.checked ? 'Saved - LOW alerts show on the toolbar icon' : 'Saved - no LOW badge on the toolbar icon');
 });
 
 $('btn-check-updates').addEventListener('click', async () => {
@@ -1777,14 +1779,36 @@ $('btn-pin-remove').addEventListener('click', async () => {
 
 $('btn-settings-back').addEventListener('click', () => showScreen('main'));
 
-$('btn-name-save').addEventListener('click', async () => {
+// Every setting saves as you change it and says so - no Save buttons.
+// The name saves a moment after typing stops, or on Enter / leaving the field.
+let nameTimer = null;
+async function saveDisplayName() {
+  clearTimeout(nameTimer);
   const display_name = $('set-name').value.trim();
-  await api.rest(`/profiles?id=eq.${state.uid}`, { method: 'PATCH', body: { display_name } });
-  state.profile.display_name = display_name;
-  toast('Name saved');
+  const before = state.profile.display_name || '';
+  if (display_name === before) return;
+  state.profile.display_name = display_name; // set first so overlapping triggers don't save twice
+  try {
+    await api.rest(`/profiles?id=eq.${state.uid}`, { method: 'PATCH', body: { display_name } });
+    toast(display_name ? `Saved - teammates see you as "${display_name}"` : 'Saved - teammates see your email');
+  } catch (err) {
+    state.profile.display_name = before;
+    toast(err.message);
+  }
+}
+$('set-name').addEventListener('input', () => {
+  clearTimeout(nameTimer);
+  nameTimer = setTimeout(saveDisplayName, 1000);
+});
+$('set-name').addEventListener('change', saveDisplayName);
+$('set-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveDisplayName();
 });
 
-$('set-theme').addEventListener('change', (e) => setTheme(e.target.value, true));
+$('set-theme').addEventListener('change', (e) => {
+  setTheme(e.target.value, true);
+  toast(`Saved - ${e.target.value} theme`);
+});
 
 // Auto-lock is picked from a fixed list, so a typo can no longer switch it
 // off silently (typing -5 used to save 0 = never). A stored value that
