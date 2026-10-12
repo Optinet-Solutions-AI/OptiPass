@@ -337,14 +337,14 @@ $('btn-unlock-signout').addEventListener('click', doSignOut);
 $('btn-signout').addEventListener('click', doSignOut);
 
 async function doSignOut() {
+  lockedOnPurposeAt = Date.now();
   await keychain.lock();
   await keychain.clearPin();
   await reofferPin(); // the PIN is gone, so offer one again at the next sign-in
   await api.signOut();
   state.uid = null;
   state.profile = null;
-  state.vaultKeys = new Map();
-  state.items = [];
+  forgetUnlockedData();
   setLoginMode('signin');
   showScreen('login');
 }
@@ -984,10 +984,17 @@ function populateTagFilter() {
   sel.classList.toggle('hidden', tags.length === 0);
 }
 
-$('btn-lock').addEventListener('click', async () => {
-  await keychain.lock();
+// Locked: drop decrypted data from memory and from the (hidden) list.
+function forgetUnlockedData() {
   state.vaultKeys = new Map();
   state.items = [];
+  $('entry-list').innerHTML = '';
+}
+
+$('btn-lock').addEventListener('click', async () => {
+  lockedOnPurposeAt = Date.now();
+  await keychain.lock();
+  forgetUnlockedData();
   showUnlockScreen();
 });
 
@@ -2994,6 +3001,36 @@ async function launchPicker(pickIndex) {
     showError('edit-error', 'Cannot pick on this page - open the tool dashboard in the active tab.');
   }
 }
+
+// ---------- auto-lock while open ----------
+
+// Any activity on an unlocked screen restarts the auto-lock timer (at most
+// every 20 s) - not just unlock / copy / fill / save.
+const UNLOCKED_SCREENS = ['main', 'edit', 'metric-edit', 'payguide', 'settings', 'admin', 'help'];
+const unlockedScreenShown = () => UNLOCKED_SCREENS.some((s) => !$(`screen-${s}`).classList.contains('hidden'));
+let lastActivityReset = 0;
+function noteActivity() {
+  if (Date.now() - lastActivityReset < 20000 || !unlockedScreenShown()) return;
+  lastActivityReset = Date.now();
+  keychain.resetAutoLock();
+}
+for (const ev of ['pointerdown', 'keydown', 'wheel']) {
+  document.addEventListener(ev, noteActivity, { capture: true, passive: true });
+}
+
+// When the auto-lock fires while OptiPass is open (e.g. in its own window),
+// stop showing the vault. Lock / Sign out handle their own screens.
+let lockedOnPurposeAt = 0;
+chrome.storage.onChanged.addListener((changes, area) => {
+  const keys = changes[keychain.SESSION_STORE];
+  if (area !== 'session' || !keys || keys.newValue) return;
+  if (Date.now() - lockedOnPurposeAt < 3000 || !unlockedScreenShown()) return;
+  endTourOverlay();
+  forgetUnlockedData();
+  showUnlockScreen().then(() =>
+    showError('unlock-error', `Locked after ${autoLockLabel(state.settings.autoLockMinutes)} without activity.`)
+  );
+});
 
 // In window mode the pick lands while we're still open: resume live.
 chrome.storage.onChanged.addListener((changes, area) => {

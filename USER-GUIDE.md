@@ -74,7 +74,10 @@ extension:
 - **Master password:** used on a new browser, after a PIN wipe, or via
   "Use master password instead".
 - **Auto-lock:** the vault locks after 5 minutes idle (change it in Settings →
-  Auto-lock: 1 minute to 4 hours, or Never) and always when the browser closes. Locking never signs you out.
+  Auto-lock: 1 minute to 4 hours, or Never) and always when the browser closes.
+  Any click, key press or scroll in OptiPass counts as activity. If OptiPass is
+  open (e.g. in its own window) when it locks, it switches to the unlock screen
+  and says why. Locking never signs you out.
 - **Sign out** (Settings → Sign out): full logout — account password needed
   next time, and your PIN on that browser is removed.
 
