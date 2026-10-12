@@ -579,8 +579,17 @@ export default function App() {
           onBack={backToMain}
         />
       )}
+      {/* Hovering keeps a message up so it can be finished. */}
       {toast && (
-        <div className="toast" role="status">
+        <div
+          className="toast"
+          role="status"
+          onMouseEnter={() => clearTimeout(toastTimer.current)}
+          onMouseLeave={() => {
+            clearTimeout(toastTimer.current);
+            toastTimer.current = setTimeout(() => setToast(null), 1500);
+          }}
+        >
           {toast}
         </div>
       )}

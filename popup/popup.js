@@ -115,6 +115,7 @@ const state = {
 const SCREENS = ['config', 'login', 'pending', 'master-setup', 'unlock', 'pin-setup', 'main', 'edit', 'metric-edit', 'payguide', 'settings', 'admin', 'help'];
 
 function showScreen(name) {
+  if (toastScreen && toastScreen !== name) hideToast();
   $('splash').classList.add('hidden');
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
   const focus = { login: 'login-email', 'pin-setup': 'ps-pin', main: 'search' }[name];
@@ -135,14 +136,41 @@ async function showUnlockScreen(forceMaster = false) {
 }
 
 let toastTimer = null;
-function toast(msg) {
+let toastScreen = null; // set for messages about one screen; they go when you leave it
+
+function hideToast() {
+  clearTimeout(toastTimer);
+  $('toast').classList.add('hidden');
+  toastScreen = null;
+}
+
+function toast(msg, { screenOnly = false } = {}) {
   const el = $('toast');
   el.textContent = msg;
   el.classList.remove('hidden');
+  toastScreen = screenOnly ? SCREENS.find((s) => !$(`screen-${s}`).classList.contains('hidden')) : null;
+  placeToast(el);
   clearTimeout(toastTimer);
   // Long messages (usually errors) stay up long enough to read.
-  toastTimer = setTimeout(() => el.classList.add('hidden'), Math.min(8000, Math.max(2200, msg.length * 65)));
+  toastTimer = setTimeout(hideToast, Math.min(8000, Math.max(2200, msg.length * 65)));
 }
+
+// Never cover the editor's sticky Save bar: sit just above it when they'd overlap.
+function placeToast(el) {
+  el.style.bottom = '';
+  const bar = [...document.querySelectorAll('[data-toast-avoid]')].find((b) => b.offsetParent);
+  if (!bar) return;
+  const r = bar.getBoundingClientRect();
+  const t = el.getBoundingClientRect();
+  if (r.top < t.bottom && r.bottom > t.top) el.style.bottom = `${window.innerHeight - r.top + 8}px`;
+}
+
+// Hovering keeps a message up so it can be finished.
+$('toast').addEventListener('mouseenter', () => clearTimeout(toastTimer));
+$('toast').addEventListener('mouseleave', () => {
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 1500);
+});
 
 function showError(id, msg, ok = false) {
   const el = $(id);
@@ -1582,7 +1610,7 @@ $('btn-save').addEventListener('click', async () => {
       // New tool: reopen it in full edit mode so the sections
       // (MFA, keys, monitors, payments) can be filled in.
       await openEdit(itemId);
-      toast('Tool added - open the sections below to add MFA, keys, monitors, or payments');
+      toast('Tool added - open the sections below to add MFA, keys, monitors, or payments', { screenOnly: true });
       return;
     }
     showScreen('main');
