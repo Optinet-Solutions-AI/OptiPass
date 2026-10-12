@@ -49,8 +49,9 @@ extension:
 
 1. Click the OptiPass icon → **Need an account? Sign up**
 2. Enter the **email that was invited** and choose an **account password**
-   (8+ characters). The **invite code** field is only needed if you sign up
-   with a different email
+   (8+ characters). It must be the exact email the invite was sent to — an
+   invite can't be used with a different address (ask your admin to invite
+   that one instead)
 3. OptiPass **generates your master password** for you (a 5-word passphrase
    like `coral-window-lemon-storm-pine-42`). **Copy it and save it somewhere
    safe right now** — you'll need it on any new device or Chrome profile,
@@ -262,7 +263,8 @@ Open **Admin** (the 👥 icon on the main screen — visible to admins only).
 ### Inviting a new teammate (step by step)
 1. Admin → **Invite by email** → enter their email and global role
 2. Click **Invite** — a **signup link is copied to your clipboard** (it's
-   also in the invite list: **Copy link**, or **Copy code** for the code alone)
+   also in the invite list: **Copy link**). The link only works for the
+   invited email, so a forwarded link can't be used by someone else
 3. Send them the link (plus the setup guide for the extension)
 4. They open the link, choose their passwords, and are active immediately
 5. Add them to the team vaults they need (steps above)

@@ -136,9 +136,12 @@ declare
 begin
   select count(*) = 0 into first_user from profiles;
 
-  -- invite code (from signup metadata) wins; fall back to email match
+  -- invite code (from signup metadata), only for the email it was issued to
+  -- (migration 009); otherwise fall back to email match
   if coalesce(new.raw_user_meta_data->>'invite_code', '') <> '' then
-    select * into inv from invites where code = new.raw_user_meta_data->>'invite_code';
+    select * into inv from invites
+     where code = new.raw_user_meta_data->>'invite_code'
+       and lower(email) = lower(new.email);
     has_inv := found;
   end if;
   if not has_inv then

@@ -240,26 +240,10 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
           signup
             ? fromLink
               ? "You're invited! Add your password to complete signup."
-              : 'Sign up with the email your admin invited (or their invite code).'
+              : 'Sign up with the email address your admin invited.'
             : 'Sign in with your team account.'
         }
       />
-      {signup && (
-        <>
-          <label htmlFor="auth-invite">Invite code (optional)</label>
-          <input
-            id="auth-invite"
-            type="text"
-            onKeyDown={onEnter}
-            value={invite}
-            onChange={(e) => setInvite(e.target.value)}
-            placeholder="e.g. 4f9a1c2b7d3e5a08"
-            autoComplete="off"
-            readOnly={fromLink}
-            style={fromLink ? { opacity: 0.7 } : undefined}
-          />
-        </>
-      )}
       <label htmlFor="auth-email">Email</label>
       <input
         id="auth-email"

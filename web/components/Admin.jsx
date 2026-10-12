@@ -247,9 +247,6 @@ export default function Admin({ profile, memberships, vaultKeysRef, refreshVault
                   <button className="btn small" onClick={async () => { await navigator.clipboard.writeText(signupLink(inv)); showToast('Signup link copied'); }}>
                     Copy link
                   </button>
-                  <button className="btn small" onClick={async () => { await navigator.clipboard.writeText(inv.code); showToast('Invite code copied'); }}>
-                    Copy code
-                  </button>
                 </>
               )}
               <button

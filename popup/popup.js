@@ -283,7 +283,7 @@ function setLoginMode(mode) {
   $('btn-login-submit').textContent = signup ? 'Create account' : 'Sign in';
   $('login-toggle').textContent = signup ? 'Have an account? Sign in' : 'Need an account? Sign up';
   $('login-sub').textContent = signup
-    ? 'Sign up with the email your admin invited (or their invite code).'
+    ? 'Sign up with the email address your admin invited.'
     : 'Sign in with your team account.';
   hideError('login-error');
 }
@@ -305,7 +305,8 @@ async function submitLogin() {
     if (state.loginMode === 'signup') {
       if (pw.length < 8) return showError('login-error', 'Account password must be at least 8 characters.');
       if (pw !== $('login-pw2').value) return showError('login-error', 'Passwords do not match.');
-      const { signedIn } = await api.signUp(email, pw, $('login-invite').value.trim() || undefined);
+      // An invite is matched by email (a code only works for its own email).
+      const { signedIn } = await api.signUp(email, pw);
       if (!signedIn) {
         setLoginMode('signin');
         return showError('login-error', 'Account created - confirm the email we sent you, then sign in.', true);
@@ -326,7 +327,7 @@ async function submitLogin() {
 
 $('btn-login-submit').addEventListener('click', submitLogin);
 // Enter submits from any field, when signing in and when signing up.
-for (const id of ['login-email', 'login-pw', 'login-pw2', 'login-invite']) {
+for (const id of ['login-email', 'login-pw', 'login-pw2']) {
   $(id).addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submitLogin();
   });
@@ -2048,14 +2049,6 @@ async function loadAdminInvites() {
         toast('Signup link copied - it prefills their invite and email');
       });
       row.appendChild(linkBtn);
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'btn small';
-      copyBtn.textContent = 'Copy code';
-      copyBtn.addEventListener('click', async () => {
-        await navigator.clipboard.writeText(inv.code);
-        toast('Invite code copied');
-      });
-      row.appendChild(copyBtn);
     }
     row.appendChild(
       confirmButton('Remove', 'Confirm remove', async () => {
