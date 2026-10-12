@@ -313,7 +313,7 @@ are actions with their own buttons).
 | Theme | Light (default) / dark — follows you across devices |
 | Auto-lock | How long without activity before locking: 1 minute … 4 hours, or Never. Saved as soon as you pick |
 | Quick unlock PIN | Set / change / remove for this browser |
-| Change master password | Re-encrypts your keys; vault data untouched |
+| Change master password | Re-encrypts your keys; vault data untouched. The new one needs 12+ characters. If saving fails (e.g. offline) you're told so and the old one keeps working |
 | Updates | Auto-update toggle (default on) + manual check |
 | Alerts | Toolbar badge for LOW metrics |
 | Help / tour | This guide's short version + the interactive tour |

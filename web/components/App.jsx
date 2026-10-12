@@ -479,7 +479,12 @@ export default function App() {
   }
 
   async function changeMasterPassword(oldPw, newPw) {
-    const privateJwk = await keychain.decryptPrivateKey(oldPw, keyRecord);
+    let privateJwk;
+    try {
+      privateJwk = await keychain.decryptPrivateKey(oldPw, keyRecord);
+    } catch {
+      throw Object.assign(new Error('Current master password is incorrect.'), { code: 'WRONG_MASTER' });
+    }
     const newRecord = await keychain.reencryptPrivateKey(privateJwk, newPw);
     await api.rest(`/user_keys?user_id=eq.${uidRef.current}`, { method: 'PATCH', body: newRecord });
     setKeyRecord(newRecord);

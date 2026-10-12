@@ -1849,26 +1849,38 @@ $('set-autolock').addEventListener('change', async (e) => {
   );
 });
 
+// Same rule as the guide's advice ("use 12+ characters").
+const MASTER_MIN_LENGTH = 12;
+
 $('btn-change-pw').addEventListener('click', async () => {
   hideError('cmp-msg');
   const oldPw = $('cmp-old').value;
   const newPw = $('cmp-new').value;
-  if (newPw.length < 10) return showError('cmp-msg', 'New password must be at least 10 characters.');
+  if (newPw.length < MASTER_MIN_LENGTH) {
+    return showError('cmp-msg', `The new master password must be at least ${MASTER_MIN_LENGTH} characters.`);
+  }
   if (newPw !== $('cmp-new2').value) return showError('cmp-msg', 'New passwords do not match.');
 
   const btn = $('btn-change-pw');
   btn.disabled = true;
   btn.textContent = 'Re-encrypting...';
   try {
-    const privateJwk = await keychain.decryptPrivateKey(oldPw, state.keyRecord);
+    // Only a failed decrypt means a wrong password; anything after that is
+    // a save problem, and the old password still works.
+    let privateJwk;
+    try {
+      privateJwk = await keychain.decryptPrivateKey(oldPw, state.keyRecord);
+    } catch {
+      return showError('cmp-msg', 'Current master password is incorrect.');
+    }
     const newRecord = await keychain.reencryptPrivateKey(privateJwk, newPw);
     await api.rest(`/user_keys?user_id=eq.${state.uid}`, { method: 'PATCH', body: newRecord });
     state.keyRecord = newRecord;
     api.logEvent('keys.master_password_changed');
     for (const id of ['cmp-old', 'cmp-new', 'cmp-new2']) $(id).value = '';
     showError('cmp-msg', 'Master password changed.', true);
-  } catch {
-    showError('cmp-msg', 'Current master password is incorrect.');
+  } catch (err) {
+    showError('cmp-msg', `Couldn't change the master password - your current one still works. ${err.message}`);
   } finally {
     btn.disabled = false;
     btn.textContent = 'Change password';
