@@ -230,12 +230,11 @@ async function boot() {
   state.profile = profile;
 
   if (profile.status === 'pending') {
-    $('pending-msg').textContent =
-      'Your account is waiting for an admin to approve it. Ask your admin, then check again.';
+    showPending(false);
     return showScreen('pending');
   }
   if (profile.status === 'disabled') {
-    $('pending-msg').textContent = 'Your account has been disabled. Contact your admin.';
+    showPending(true);
     return showScreen('pending');
   }
 
@@ -320,6 +319,16 @@ for (const id of ['login-email', 'login-pw', 'login-pw2', 'login-invite']) {
   $(id).addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submitLogin();
   });
+}
+
+// Waiting for approval -> "Check again"; disabled -> nothing to wait for, just Sign out.
+function showPending(disabled) {
+  $('pending-title').textContent = disabled ? 'Account disabled' : 'Almost in';
+  $('pending-msg').textContent = disabled
+    ? "Your account has been disabled, so your vault can't be opened. If you think this is a mistake, contact your OptiPass admin."
+    : 'Your account is waiting for an admin to approve it. Ask your admin, then check again.';
+  $('btn-pending-refresh').classList.toggle('hidden', disabled);
+  $('btn-pending-signout').className = disabled ? 'btn primary full' : 'btn link full';
 }
 
 $('btn-pending-refresh').addEventListener('click', boot);

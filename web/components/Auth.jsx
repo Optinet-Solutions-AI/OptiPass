@@ -123,18 +123,20 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
   }
 
   if (screen === 'pending') {
+    // Waiting for approval -> "Check again"; disabled -> nothing to wait for, just Sign out.
+    const disabled = profile?.status === 'disabled';
     return (
       <div className="screen" style={{ maxWidth: 460 }}>
-        <Brand title="Almost in" />
+        <Brand title={disabled ? 'Account disabled' : 'Almost in'} />
         <div className="notice">
           <p>
-            {profile?.status === 'disabled'
-              ? 'Your account has been disabled. Contact your admin.'
+            {disabled
+              ? "Your account has been disabled, so your vault can't be opened. If you think this is a mistake, contact your OptiPass admin."
               : 'Your account is waiting for an admin to approve it. Ask your admin, then check again.'}
           </p>
         </div>
-        <button className="btn primary full" onClick={onBoot}>Check again</button>
-        <button className="btn link full" onClick={onSignOut}>Sign out</button>
+        {!disabled && <button className="btn primary full" onClick={onBoot}>Check again</button>}
+        <button className={disabled ? 'btn primary full' : 'btn link full'} onClick={onSignOut}>Sign out</button>
       </div>
     );
   }

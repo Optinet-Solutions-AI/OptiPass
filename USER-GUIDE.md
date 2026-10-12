@@ -121,7 +121,7 @@ first", do that and right-click again.
 
 1. Click **+** ("Add tool")
 2. Fill the **Basic information**: tool name, tool link, **who has access**
-   (Private, or a team), sign-in method, and credentials
+   (Personal, or a team vault), sign-in method, and credentials
 3. **Save** — the tool reopens in full edit mode so you can add the rest
 
 **Sign-in method:**
@@ -263,7 +263,8 @@ Sign-ups **without an invite are rejected** — there is no way in without one
 (no "pending approval" queue).
 
 ### Managing people
-- **Disable** cuts someone's server access instantly (re-enable anytime)
+- **Disable** cuts someone's server access instantly (re-enable anytime);
+  they see "Account disabled" with only a Sign out button
 - The **super admin** can additionally promote/demote admins and **Delete**
   accounts entirely (click Delete, then Confirm delete)
 - When someone leaves: disable or delete them, remove them from vaults, and
@@ -349,7 +350,7 @@ by 1Password and Bitwarden:
 - **Forgot your account password** → an admin resets it from Supabase.
 - **Forgot your master password** → it cannot be recovered. An admin resets
   your keys (see SETUP.md); your Personal vault is lost, team vaults return
-  when a vault Admin re-adds you.
+  when a vault Manager re-adds you.
 - **2FA code rejected** → your computer clock is off; Windows Settings →
   Time → Sync now.
 - **Right-click menu says "Unlock OptiPass first"** → unlock, right-click
