@@ -267,12 +267,15 @@ async function boot() {
 async function getActiveHost() {
   try {
     const tab = await getActiveNormalTab();
-    if (tab?.url) {
+    const url = tab?.url ? new URL(tab.url) : null;
+    // Only websites: chrome://extensions etc. would prefill "extensions" as
+    // a new tool's link and mark matching tools "This site".
+    if (url && (url.protocol === 'https:' || url.protocol === 'http:')) {
       state.activeUrl = tab.url;
-      return new URL(tab.url).hostname.replace(/^www\./, '');
+      return url.hostname.replace(/^www\./, '');
     }
   } catch {
-    /* chrome:// pages etc. */
+    /* unparsable URL */
   }
   return null;
 }
