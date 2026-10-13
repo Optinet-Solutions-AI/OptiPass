@@ -266,9 +266,16 @@ async function maintenance() {
   try {
     let low = 0;
     if (settings.alertsBadge !== false) {
-      const monitors = await rest('/tool_monitors?select=last_numeric,threshold');
+      // Only tools you can see: before migration 010 the server returns
+      // every monitor in the organisation.
+      const [monitors, items] = await Promise.all([
+        rest('/tool_monitors?select=item_id,last_numeric,threshold'),
+        rest('/items?select=id'),
+      ]);
+      const mine = new Set(items.map((i) => i.id));
       low = monitors.filter(
         (m) =>
+          mine.has(m.item_id) &&
           m.threshold !== null &&
           m.last_numeric !== null &&
           Number(m.last_numeric) < Number(m.threshold)

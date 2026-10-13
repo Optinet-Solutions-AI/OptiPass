@@ -665,6 +665,7 @@ async function enterMain() {
   } catch {
     /* best effort */
   }
+  state.monitors = state.monitors.filter((m) => m.item_id); // orphans belong to no tool you see
   populateVaultSelects();
   populateTagFilter();
   $('btn-admin').classList.toggle('hidden', !['admin', 'super_admin'].includes(state.profile.role));
@@ -2404,8 +2405,13 @@ function monitorHost(url) {
   }
 }
 
+// Only monitors of tools in your list (plus pre-004 ones without a tool,
+// for adoptOrphanMonitors) - before migration 010 the server returns every
+// monitor in the organisation.
 async function fetchMonitors() {
-  state.monitors = await api.rest('/tool_monitors?select=*&order=name');
+  const ids = new Set(state.items.map((e) => e.id));
+  const rows = await api.rest('/tool_monitors?select=*&order=name');
+  state.monitors = rows.filter((m) => !m.item_id || ids.has(m.item_id));
 }
 
 function formatMonitorValue(mon) {

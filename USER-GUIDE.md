@@ -188,7 +188,10 @@ Track any number the tool shows — credits, bandwidth, RAM, seats:
   on the current page"**, then click the number itself. Refreshes whenever a
   member visits that page with OptiPass.
 Set a **unit** (GB, USD...) and **Warn below** — readings turn red LOW and a
-red badge appears on the OptiPass toolbar icon.
+red badge appears on the OptiPass toolbar icon. The badge counts only tools
+in your own list. A tool's monitors are visible to the members of its vault;
+Viewers' visits refresh the readings, but only Managers and Editors can
+change or remove a monitor.
 
 ### Payments & top-ups
 - **Payment link** — the tool's billing page, with a one-click open button
