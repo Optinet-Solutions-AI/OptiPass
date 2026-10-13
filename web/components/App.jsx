@@ -22,7 +22,8 @@ import Admin from '@/components/Admin';
 import Settings from '@/components/Settings';
 
 export default function App() {
-  const [screen, setScreen] = useState('boot'); // boot|config|login|pending|master-setup|unlock|main|edit|settings|admin
+  const [screen, setScreen] = useState('boot'); // boot|config|login|pending|master-setup|unlock|reset-password|main|edit|settings|admin
+  const [authNotice, setAuthNotice] = useState(null); // e.g. an expired email link, shown on the sign-in form
   const [profile, setProfile] = useState(null);
   const [keyRecord, setKeyRecord] = useState(null);
   const [memberships, setMemberships] = useState([]);
@@ -53,11 +54,18 @@ export default function App() {
     setSettings(s);
     applyTheme(s.theme);
 
-    api.adoptSessionFromUrlHash(); // email confirmation / recovery links
+    const link = api.adoptSessionFromUrlHash(); // email confirmation / recovery links
+    if (link === 'link-expired') {
+      setAuthNotice('This link has expired or was already used. Ask for a new one below.');
+    }
 
     const session = await api.getSession();
     if (!session) return setScreen('login');
     uidRef.current = session.user.id;
+    if (link === 'recovery') {
+      setProfile({ email: session.user.email }); // shown on the screen; boot() loads the real profile next
+      return setScreen('reset-password'); // choose the new account password first
+    }
 
     let prof;
     try {
@@ -506,10 +514,12 @@ export default function App() {
   return (
     <>
       {screen === 'boot' && <div className="screen" />}
-      {['login', 'pending', 'master-setup', 'unlock'].includes(screen) && (
+      {['login', 'pending', 'master-setup', 'unlock', 'reset-password'].includes(screen) && (
         <Auth
           screen={screen}
           profile={profile}
+          notice={authNotice}
+          onNoticeShown={() => setAuthNotice(null)}
           onBoot={boot}
           onSignOut={handleSignOut}
           onMasterSetup={handleMasterSetup}

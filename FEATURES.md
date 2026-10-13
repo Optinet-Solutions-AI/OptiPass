@@ -54,6 +54,7 @@ Legend: ✅ **have it** · 🟡 **easy add** (days) · 🔵 **bigger effort** (w
 | Feature | Status | Notes |
 |---|---|---|
 | Email + password sign-in | ✅ | Supabase Auth |
+| Forgot account password (email reset link) | ✅ | Supabase reset email → web "Choose a new account password"; master password unaffected |
 | Invite-only sign-up | ✅ | Invited = active instantly (signup link); uninvited sign-ups are rejected |
 | Roles: super admin / admin / member | ✅ | First signup = super admin |
 | Per-vault permissions (manager/editor/viewer) | ✅ | |

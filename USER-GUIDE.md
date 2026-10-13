@@ -9,7 +9,7 @@ only ever stores scrambled data. Not even admins can read your Personal vault.
 
 | | What it does | If you forget it |
 |---|---|---|
-| **Account password** | Signs you in (like any website login) | An admin can reset it |
+| **Account password** | Signs you in (like any website login) | Click **Forgot account password?** on the sign-in screen — we email you a reset link |
 | **Master password** | Decrypts your vaults; never leaves your device | **Gone forever — nobody can recover it.** Write it down somewhere safe. |
 
 Day to day you'll barely type either — a 6-digit PIN unlocks the extension.
@@ -378,7 +378,13 @@ by 1Password and Bitwarden:
 - **"Your session expired - please sign in again"** → your sign-in ran out
   (or was ended by an admin); sign in again with your account password. Being
   offline for a while does *not* sign you out.
-- **Forgot your account password** → an admin resets it from Supabase.
+- **Forgot your account password** → on the sign-in screen (extension or
+  website) click **Forgot account password?**, enter your email and click
+  **Send reset link**. Open the email's link on your computer: the OptiPass
+  website asks for a new account password, then for your master password as
+  usual. Your master password and your tools don't change. A link works once;
+  if it says it expired, ask for a new one. No email after a few minutes
+  (check spam)? Ask an admin.
 - **Forgot your master password** → it cannot be recovered. An admin resets
   your keys (see SETUP.md); your Personal vault is lost, team vaults return
   when a vault Manager re-adds you.

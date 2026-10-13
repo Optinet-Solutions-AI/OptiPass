@@ -37,14 +37,18 @@
     </div>
     <label for="login-email">Email</label>
     <input type="email" id="login-email" autocomplete="username" placeholder="you@optinetsolutions.com" />
-    <label for="login-pw">Account password</label>
-    <input type="password" id="login-pw" autocomplete="current-password" />
+    <div id="login-pw-wrap">
+      <label for="login-pw">Account password</label>
+      <input type="password" id="login-pw" autocomplete="current-password" />
+    </div>
     <div id="login-pw2-wrap" class="hidden">
       <label for="login-pw2">Confirm account password</label>
       <input type="password" id="login-pw2" autocomplete="new-password" />
     </div>
+    <p id="login-forgot-note" class="muted hidden">This resets the password you sign in with. A forgotten <strong>master password</strong> can't be reset - ask your OptiPass admin for help.</p>
     <div id="login-error" class="error hidden"></div>
     <button id="btn-login-submit" class="btn primary full">Sign in</button>
+    <button id="login-forgot" class="btn link full">Forgot account password?</button>
     <button id="login-toggle" class="btn link full">Need an account? Sign up</button>
   </div>
 
@@ -458,6 +462,7 @@
 
     <section>
       <h3>FAQ</h3>
+      <p class="muted"><strong>Forgot your account password?</strong> On the sign-in screen click "Forgot account password?" and we email you a link. It opens the OptiPass website, where you choose a new account password. Your master password and your tools stay the same.</p>
       <p class="muted"><strong>Forgot your master password?</strong> It cannot be recovered. An admin resets your keys (SETUP.md explains how); your Personal vault is lost but team vaults come back when a vault manager re-adds you.</p>
       <p class="muted"><strong>Forgot your PIN?</strong> Click "Use master password instead" - after 5 wrong PIN tries it resets automatically and you're offered a new one.</p>
       <p class="muted"><strong>New teammate?</strong> Admin screen &gt; Invite by email copies a signup link - send it to them. It opens OptiPass with their invite and email filled in, and they choose their own passwords.</p>

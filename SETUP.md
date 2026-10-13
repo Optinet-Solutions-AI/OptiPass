@@ -62,5 +62,9 @@ Notes on how sharing works (end-to-end encryption rules):
 
 ## Forgot passwords?
 
-- **Account password** (email login): reset via Supabase's email reset — or an admin can send a reset from the Supabase dashboard (Authentication → Users).
+- **Account password** (email login): users click **Forgot account password?** on the sign-in screen (extension or web). Supabase emails a link that opens the web app on a "Choose a new account password" screen. The vault and master password are untouched. An admin can also send a reset from the Supabase dashboard (Authentication → Users).
+  - **One-time setup in Supabase** (without it the email isn't sent, or the link opens the wrong page):
+    1. Authentication → **URL Configuration**: Site URL `https://opti-pass.vercel.app`; add `https://opti-pass.vercel.app/**` under Redirect URLs.
+    2. Authentication → **Emails → SMTP Settings**: turn on custom SMTP (e.g. the company mail provider). Supabase's built-in sender only delivers to members of the Supabase project team and only a few emails per hour.
+    3. Optional: Authentication → Emails → **Reset Password** template: say it's for OptiPass, e.g. subject "Reset your OptiPass account password".
 - **Master password: cannot be recovered. Ever.** That's the zero-knowledge design. The person's personal vault is lost; shared vaults are fine (a manager re-adds them after they redo key setup). To reset someone's keys: delete their row from `user_keys` in Supabase, they set a new master password on next login, then managers re-add them to shared vaults.

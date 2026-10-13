@@ -26,7 +26,7 @@ function strengthOf(pw) {
 
 const STRENGTH_COLORS = ['#b4544a', '#b4544a', '#c9a227', '#c9a227', '#6b8f71', '#6b8f71'];
 
-export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup, onUnlock, showToast }) {
+export default function Auth({ screen, profile, notice, onNoticeShown, onBoot, onSignOut, onMasterSetup, onUnlock, showToast }) {
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
@@ -61,6 +61,56 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
     setOk(false);
     setError('Your session expired - please sign in again.');
   }, [screen]);
+
+  // An expired or already-used reset link: offer to send a new one.
+  useEffect(() => {
+    if (screen !== 'login' || !notice) return;
+    setMode('forgot');
+    setOk(false);
+    setError(notice);
+    onNoticeShown?.();
+  }, [screen, notice, onNoticeShown]);
+
+  // "Forgot account password?" - Supabase emails a link back to this app.
+  async function submitForgot() {
+    if (busy) return;
+    setError(null);
+    setOk(false);
+    if (!email.trim()) return setError('Enter the email address you sign in with.');
+    setBusy(true);
+    try {
+      await api.requestPasswordReset(email.trim());
+      setOk(true);
+      setError(
+        `If ${email.trim()} has an OptiPass account, a reset link is on its way. Open it on this computer to choose a new account password (check spam too).`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Reached from the email link: the user is signed in for this one step.
+  async function submitNewPassword() {
+    if (busy) return;
+    setError(null);
+    if (pw.length < 8) return setError('Account password must be at least 8 characters.');
+    if (pw !== pw2) return setError('Passwords do not match.');
+    setBusy(true);
+    try {
+      await api.updatePassword(pw);
+      api.logEvent('auth.password_reset');
+      setPw('');
+      setPw2('');
+      showToast('Account password changed. Your master password is the same as before.');
+      await onBoot();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitLogin() {
     if (busy) return; // already submitting (e.g. Enter pressed twice)
@@ -230,6 +280,57 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
     );
   }
 
+  if (screen === 'reset-password') {
+    const onEnterNew = (e) => e.key === 'Enter' && submitNewPassword();
+    return (
+      <div className="screen" style={{ maxWidth: 460 }}>
+        <Brand title="Choose a new account password" sub={profile?.email || 'For signing in to OptiPass.'} />
+        <label htmlFor="reset-pw">New account password (8+ characters)</label>
+        <input id="reset-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={onEnterNew} autoComplete="new-password" autoFocus />
+        <label htmlFor="reset-pw2">Confirm new password</label>
+        <input id="reset-pw2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={onEnterNew} autoComplete="new-password" />
+        <p className="muted">
+          This only changes the password you sign in with. Your <strong>master password</strong> stays the same - you&apos;ll
+          still need it to unlock your vault.
+        </p>
+        {error && <div className="error">{error}</div>}
+        <button className="btn primary full" disabled={busy} onClick={submitNewPassword}>
+          {busy ? 'Saving...' : 'Save new password'}
+        </button>
+        <button className="btn link full" onClick={onSignOut}>Cancel</button>
+      </div>
+    );
+  }
+
+  if (mode === 'forgot') {
+    return (
+      <div className="screen" style={{ maxWidth: 460 }}>
+        <Brand title="Reset your account password" sub="We'll email you a link to choose a new one." />
+        <label htmlFor="auth-email">Email</label>
+        <input
+          id="auth-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submitForgot()}
+          placeholder="you@optinetsolutions.com"
+          autoComplete="username"
+        />
+        <p className="muted">
+          This resets the password you sign in with. A forgotten <strong>master password</strong> can&apos;t be reset -
+          ask your OptiPass admin for help.
+        </p>
+        {error && <div className={`error${ok ? ' ok' : ''}`}>{error}</div>}
+        <button className="btn primary full" disabled={busy} onClick={submitForgot}>
+          {busy ? 'Sending...' : 'Send reset link'}
+        </button>
+        <button className="btn link full" onClick={() => { setMode('signin'); setError(null); setOk(false); }}>
+          Back to sign in
+        </button>
+      </div>
+    );
+  }
+
   // login / signup
   const signup = mode === 'signup';
   return (
@@ -275,6 +376,11 @@ export default function Auth({ screen, profile, onBoot, onSignOut, onMasterSetup
       <button className="btn primary full" disabled={busy} onClick={submitLogin}>
         {busy ? 'Working...' : signup ? 'Create account' : 'Sign in'}
       </button>
+      {!signup && (
+        <button className="btn link full" onClick={() => { setMode('forgot'); setError(null); setOk(false); }}>
+          Forgot account password?
+        </button>
+      )}
       <button className="btn link full" onClick={() => { setMode(signup ? 'signin' : 'signup'); setError(null); }}>
         {signup ? 'Have an account? Sign in' : 'Need an account? Sign up'}
       </button>

@@ -282,24 +282,55 @@ async function getActiveHost() {
 
 // ---------- login / signup ----------
 
+// signin | signup | forgot (email only: sends the reset-password email)
 function setLoginMode(mode) {
   state.loginMode = mode;
   const signup = mode === 'signup';
+  const forgot = mode === 'forgot';
+  $('login-pw-wrap').classList.toggle('hidden', forgot);
   $('login-pw2-wrap').classList.toggle('hidden', !signup);
-  $('btn-login-submit').textContent = signup ? 'Create account' : 'Sign in';
-  $('login-toggle').textContent = signup ? 'Have an account? Sign in' : 'Need an account? Sign up';
+  $('login-forgot-note').classList.toggle('hidden', !forgot);
+  $('login-forgot').classList.toggle('hidden', mode !== 'signin');
+  $('btn-login-submit').textContent = signup ? 'Create account' : forgot ? 'Send reset link' : 'Sign in';
+  $('login-toggle').textContent = signup || forgot ? 'Back to sign in' : 'Need an account? Sign up';
   $('login-sub').textContent = signup
     ? 'Sign up with the email address your admin invited.'
-    : 'Sign in with your team account.';
+    : forgot
+      ? "We'll email you a link to choose a new account password."
+      : 'Sign in with your team account.';
   hideError('login-error');
 }
 
 $('login-toggle').addEventListener('click', () =>
   setLoginMode(state.loginMode === 'signin' ? 'signup' : 'signin')
 );
+$('login-forgot').addEventListener('click', () => {
+  setLoginMode('forgot');
+  $('login-email').focus();
+});
+
+async function submitForgot() {
+  const email = $('login-email').value.trim();
+  if (!email) return showError('login-error', 'Enter the email address you sign in with.');
+  const btn = $('btn-login-submit');
+  btn.disabled = true;
+  try {
+    await api.requestPasswordReset(email);
+    showError(
+      'login-error',
+      `If ${email} has an OptiPass account, a reset link is on its way (check spam too). Open it, choose a new account password on the OptiPass website, then sign in here.`,
+      true
+    );
+  } catch (err) {
+    showError('login-error', err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 async function submitLogin() {
   if ($('btn-login-submit').disabled) return; // already submitting (e.g. Enter pressed twice)
+  if (state.loginMode === 'forgot') return submitForgot();
   const email = $('login-email').value.trim();
   const pw = $('login-pw').value;
   hideError('login-error');

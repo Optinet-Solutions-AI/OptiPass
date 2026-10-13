@@ -77,6 +77,12 @@ function authErrorMessage(status, code, raw) {
   if (code === 'email_not_confirmed' || /email not confirmed/i.test(raw)) {
     return 'Confirm your email first: open the link we sent you, then sign in.';
   }
+  if (code === 'same_password' || /should be different from the old/i.test(raw)) {
+    return 'Choose a different password from the one you had before.';
+  }
+  if (code === 'email_address_not_authorized' || /not authorized/i.test(raw)) {
+    return "OptiPass can't send email to this address yet. Ask your OptiPass admin to reset your password.";
+  }
   if (status === 429 || /rate limit/i.test(`${code} ${raw}`)) return 'Too many attempts. Wait a few minutes and try again.';
   if (status >= 500) return `The sign-in server had a problem (error ${status}). Try again in a moment.`;
   return raw || `Sign-in failed (error ${status}).`;
@@ -119,13 +125,19 @@ async function authFetch(path, body, bearer) {
 
 // Supabase email links (confirmation, invites, recovery) land on the
 // Site URL with tokens in the hash. Adopt them as a session so the
-// user arrives signed in instead of on a blank page.
+// user arrives signed in instead of on a blank page. Returns what the
+// link was: 'recovery' (reset-password email), 'signin', 'link-expired'
+// (Supabase sends #error=... for used or expired links), or null.
 export function adoptSessionFromUrlHash() {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return null;
   const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  if (h.get('error') || h.get('error_code')) {
+    window.history.replaceState(null, '', window.location.pathname);
+    return 'link-expired';
+  }
   const access_token = h.get('access_token');
   const refresh_token = h.get('refresh_token');
-  if (!access_token || !refresh_token) return false;
+  if (!access_token || !refresh_token) return null;
   try {
     const b64 = access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4)));
@@ -136,9 +148,34 @@ export function adoptSessionFromUrlHash() {
       user: { id: payload.sub, email: payload.email },
     });
     window.history.replaceState(null, '', window.location.pathname);
-    return true;
+    return h.get('type') === 'recovery' ? 'recovery' : 'signin';
   } catch {
-    return false;
+    return null;
+  }
+}
+
+// Sends Supabase's "reset password" email; its link comes back here with
+// type=recovery. Only the account password - the master password can't
+// be reset. Supabase answers the same way whether or not the address
+// has an account.
+export async function requestPasswordReset(email) {
+  await authFetch(`/recover?redirect_to=${encodeURIComponent(`${window.location.origin}/?reset=1`)}`, { email });
+}
+
+// Sets a new account password for the signed-in user (after a reset link).
+export async function updatePassword(password) {
+  const s = await getSession();
+  if (!s) throw new Error('Your reset link has expired. Ask for a new one.');
+  const res = await send(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'PUT',
+    headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Authorization: `Bearer ${s.access_token}` },
+    body: JSON.stringify({ password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const raw = data.error_description || data.msg || data.message || '';
+    const code = data.error_code || '';
+    throw serverError(authErrorMessage(res.status, code, raw), res.status, code, raw);
   }
 }
 
