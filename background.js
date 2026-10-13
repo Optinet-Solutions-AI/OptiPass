@@ -8,7 +8,7 @@
 
 import { rest } from './lib/api.js';
 import { decryptJson, importKeyB64 } from './lib/crypto.js';
-import { getVersions, newer } from './lib/updates.js';
+import { getVersions, isStoreInstall, newer } from './lib/updates.js';
 
 const SESSION_KEYS = 'optipass_session_keys';
 const AUTOLOCK_ALARM = 'optipass-autolock';
@@ -244,8 +244,11 @@ async function maintenance() {
   const { optipass_settings: settings = {} } = await chrome.storage.local.get('optipass_settings');
 
   // Version housekeeping: auto-apply pulled files; flag newer releases.
+  // Not for Chrome Web Store installs: Chrome updates those itself, and
+  // GitHub main can be ahead of the version the store has approved.
   let updateAvailable = null;
   try {
+    if (await isStoreInstall()) throw new Error('store install');
     const v = await getVersions();
     if (settings.autoUpdate !== false && v.disk && v.disk !== v.running) {
       chrome.runtime.reload();

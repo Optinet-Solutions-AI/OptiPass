@@ -18,6 +18,19 @@ Day to day you'll barely type either — a 6-digit PIN unlocks the extension.
 
 ## 1. Installing the extension
 
+**From the Chrome Web Store** (once it's published — the website's setup
+guide then shows an **Open OptiPass in the Chrome Web Store** button): use
+Chrome signed in with your @optinetsolutions.com Google account → **Add to
+Chrome** → **Add extension** → pin it. Chrome updates it by itself; there's
+nothing else to do. The listing is only visible inside our company.
+
+**Moving from the zip install to the store install:** install from the store,
+sign in (account password, then master password) and set your PIN again, then
+remove the old copy in `chrome://extensions`. Nothing is lost — your tools are
+on the server.
+
+**From the zip** (until then, or if the store doesn't work for you):
+
 1. Get the OptiPass folder — either:
    - **Zip:** [download it here](https://github.com/Optinet-Solutions-AI/OptiPass/archive/refs/heads/main.zip),
      right-click → **Extract All…** ⚠️ Windows nests a folder inside a
@@ -41,7 +54,8 @@ list shows "OptiPass vX is available" with **How to update**:
   folder over your current OptiPass folder (same place); OptiPass then reloads
   itself. Don't Load unpacked a second folder.
 
-You can check any time in **Settings → Check for updates**.
+You can check any time in **Settings → Check for updates**. (Store installs
+show "installed from the Chrome Web Store" there instead — Chrome handles it.)
 
 > The folder must stay where it is — moving or deleting it breaks the
 > extension until you Load unpacked again.

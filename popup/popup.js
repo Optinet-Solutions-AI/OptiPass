@@ -13,7 +13,7 @@ import {
 } from '../lib/crypto.js';
 import * as api from '../lib/api.js';
 import * as keychain from '../lib/keychain.js';
-import { getVersions, newer } from '../lib/updates.js';
+import { getVersions, isStoreInstall, newer } from '../lib/updates.js';
 import { WEB_URL } from '../lib/config.js';
 
 function signupLink(inv) {
@@ -95,6 +95,7 @@ const state = {
   editingId: null,
   activeHost: null,
   activeUrl: null,
+  storeInstall: false, // installed from the Chrome Web Store (Chrome updates it)
   revealPassword: false,
   loginMode: 'signin', // or 'signup'
   adminProfiles: [],
@@ -204,10 +205,11 @@ async function boot() {
   state.settings = await keychain.getSettings();
   applyTheme(state.settings.theme || 'light');
   maybeAutoReload(); // apply new files after a git pull, silently
+  state.storeInstall = await isStoreInstall();
   chrome.storage.session
     .get('optipass_update')
     .then((o) => {
-      state.updateAvailable = o.optipass_update || null;
+      state.updateAvailable = state.storeInstall ? null : o.optipass_update || null;
       showUpdateBanner();
     })
     .catch(() => {});
@@ -1771,6 +1773,12 @@ async function loadSettingsScreen() {
     : `Running v${chrome.runtime.getManifest().version}`;
   $('upd-howto').classList.toggle('hidden', !state.updateAvailable);
   $('btn-reload-ext').classList.add('hidden');
+  // Web Store install: Chrome keeps it current - no git/zip steps or checks.
+  $('set-autoupdate').closest('label').classList.toggle('hidden', !!state.storeInstall);
+  $('btn-check-updates').parentElement.classList.toggle('hidden', !!state.storeInstall);
+  if (state.storeInstall) {
+    $('upd-status').textContent = `Running v${chrome.runtime.getManifest().version}, installed from the Chrome Web Store - Chrome updates OptiPass by itself.`;
+  }
 }
 
 $('set-autoupdate').addEventListener('change', async (e) => {

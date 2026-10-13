@@ -10,3 +10,8 @@ export const SUPABASE_URL =
 export const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0aG1teXFicXdtaGdxbWVyb2hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTg5NzQsImV4cCI6MjEwMDk3NDk3NH0.nY0oISl7gY3YNsBsN2mt7rxD4I3GP-kqKNSs7nR0xp8';
+
+// Chrome Web Store listing of the extension (H1). Empty until it's published;
+// then the setup guide leads with "Add to Chrome" and keeps the zip steps as
+// a fallback. Set NEXT_PUBLIC_CHROME_STORE_URL in Vercel (or edit here).
+export const CHROME_STORE_URL = process.env.NEXT_PUBLIC_CHROME_STORE_URL || '';

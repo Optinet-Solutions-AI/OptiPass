@@ -710,3 +710,23 @@ section h3 {
   margin: 2px 0 10px;
   font-size: 12px;
 }
+
+/* Setup guide: zip steps folded away once the Web Store listing exists */
+.setup-fallback {
+  margin: 8px 0 16px;
+}
+.setup-fallback > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+}
+
+/* Privacy policy page */
+.privacy h2 {
+  font-size: 16px;
+  margin: 22px 0 6px;
+}
+.privacy ul {
+  margin-left: 18px;
+  line-height: 1.7;
+}

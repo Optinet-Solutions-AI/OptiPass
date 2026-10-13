@@ -1,28 +1,22 @@
 'use client';
 
+import { CHROME_STORE_URL } from '@/lib/config';
+
 const ZIP_URL = 'https://github.com/Optinet-Solutions-AI/OptiPass/archive/refs/heads/main.zip';
 const REPO_URL = 'https://github.com/Optinet-Solutions-AI/OptiPass.git';
 
-export default function SetupGuide({ onContinue }) {
+// Download, extract, Load unpacked - the only way until the Chrome Web Store
+// listing exists, and the fallback afterwards. `first` = step number to start at.
+function ZipSteps({ first }) {
   return (
-    <div className="screen" style={{ maxWidth: 560 }}>
-      <div className="brand">
-        <div className="brand-logo">O</div>
-        <h1>Your account is ready 🎉</h1>
-        <p className="muted">
-          One more thing: install the OptiPass Chrome extension. It fills logins on websites,
-          copies 2FA codes, and keeps watching your tools&apos; credits — this website is the
-          companion, the extension is the daily driver.
-        </p>
-      </div>
-
+    <>
       <section>
-        <h3>Step 1 — Download the extension</h3>
+        <h3>Step {first} — Download the extension</h3>
         <p className="muted">
           Click the button below — the download starts immediately and is always the latest
           version.
         </p>
-        <a className="btn primary full" href={ZIP_URL} style={{ textDecoration: 'none' }}>
+        <a className={`btn${CHROME_STORE_URL ? '' : ' primary'} full`} href={ZIP_URL} style={{ textDecoration: 'none' }}>
           Download OptiPass for Chrome (.zip)
         </a>
         <p className="muted" style={{ marginTop: 10 }}>
@@ -32,7 +26,7 @@ export default function SetupGuide({ onContinue }) {
       </section>
 
       <section>
-        <h3>Step 2 — Extract the folder</h3>
+        <h3>Step {first + 1} — Extract the folder</h3>
         <p className="muted">
           Find <strong>OptiPass-main.zip</strong> in your Downloads, right-click it →{' '}
           <strong>Extract All…</strong> and extract it somewhere permanent, e.g.{' '}
@@ -48,7 +42,7 @@ export default function SetupGuide({ onContinue }) {
       </section>
 
       <section>
-        <h3>Step 3 — Load it into Chrome</h3>
+        <h3>Step {first + 2} — Load it into Chrome</h3>
         <ol className="muted" style={{ marginLeft: 18, lineHeight: 1.9 }}>
           <li>
             Open a new tab and go to <strong><code>chrome://extensions</code></strong> (type it in
@@ -67,10 +61,50 @@ export default function SetupGuide({ onContinue }) {
             wrapper folder — go one level deeper and try again
           </li>
         </ol>
+        <p className="muted" style={{ marginTop: 8 }}>
+          <strong>Updates:</strong> zip installs don&apos;t update themselves. When OptiPass shows
+          &quot;a new version is available&quot;, download this zip again and copy its files over the
+          same folder (OptiPass then reloads itself); git users just run <code>git pull</code>.
+        </p>
       </section>
+    </>
+  );
+}
+
+export default function SetupGuide({ onContinue }) {
+  const store = !!CHROME_STORE_URL;
+  const pinStep = store ? 2 : 4;
+  return (
+    <div className="screen" style={{ maxWidth: 560 }}>
+      <div className="brand">
+        <div className="brand-logo">O</div>
+        <h1>Your account is ready 🎉</h1>
+        <p className="muted">
+          One more thing: install the OptiPass Chrome extension. It fills logins on websites,
+          copies 2FA codes, and keeps watching your tools&apos; credits — this website is the
+          companion, the extension is the daily driver.
+        </p>
+      </div>
+
+      {store ? (
+        <section>
+          <h3>Step 1 — Add OptiPass to Chrome</h3>
+          <p className="muted">
+            Open OptiPass in the Chrome Web Store and click <strong>Add to Chrome</strong>, then{' '}
+            <strong>Add extension</strong>. Use Chrome signed in with your{' '}
+            <strong>@optinetsolutions.com</strong> Google account — the listing is only visible to
+            our company. Chrome keeps OptiPass up to date by itself.
+          </p>
+          <a className="btn primary full" href={CHROME_STORE_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+            Open OptiPass in the Chrome Web Store
+          </a>
+        </section>
+      ) : (
+        <ZipSteps first={1} />
+      )}
 
       <section>
-        <h3>Step 4 — Pin it</h3>
+        <h3>Step {pinStep} — Pin it</h3>
         <p className="muted">
           Click the puzzle-piece 🧩 icon in Chrome&apos;s toolbar and press the 📌 pin next to
           OptiPass, so the padlock is always one click away.
@@ -78,7 +112,7 @@ export default function SetupGuide({ onContinue }) {
       </section>
 
       <section>
-        <h3>Step 5 — Sign in</h3>
+        <h3>Step {pinStep + 1} — Sign in</h3>
         <ol className="muted" style={{ marginLeft: 18, lineHeight: 1.9 }}>
           <li>Click the OptiPass icon in the toolbar</li>
           <li>Sign in with the <strong>same email and account password</strong> you just created</li>
@@ -91,13 +125,23 @@ export default function SetupGuide({ onContinue }) {
       <section>
         <h3>Good to know</h3>
         <p className="muted">
-          <strong>Updates:</strong> zip installs don&apos;t update themselves. When OptiPass shows
-          &quot;a new version is available&quot;, download this zip again and copy its files over the
-          same folder (OptiPass then reloads itself); git users just run <code>git pull</code>. <strong>Filling logins:</strong> on any login page, right-click the username
+          {store ? (
+            <>
+              <strong>Updates</strong> install automatically from the Chrome Web Store.{' '}
+            </>
+          ) : null}
+          <strong>Filling logins:</strong> on any login page, right-click the username
           field → <em>OptiPass – fill login</em>. <strong>Never share</strong> your master
           password — it can&apos;t be recovered, so store it somewhere safe.
         </p>
       </section>
+
+      {store && (
+        <details className="setup-fallback">
+          <summary>Can&apos;t use the Chrome Web Store? Install from the zip instead</summary>
+          <ZipSteps first={1} />
+        </details>
+      )}
 
       <button className="btn full" onClick={onContinue}>
         Done — take me to my vault
