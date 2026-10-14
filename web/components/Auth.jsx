@@ -123,6 +123,9 @@ export default function Auth({ screen, profile, notice, onNoticeShown, onBoot, o
         if (pw.length < 8) return setError('Account password must be at least 8 characters.');
         if (pw !== pw2) return setError('Passwords do not match.');
         const { signedIn } = await api.signUp(email.trim(), pw, invite.trim() || undefined);
+        // The invite is used up: drop ?invite=&email= so a bookmark or reload
+        // of this address opens sign-in, not the sign-up form.
+        if (fromLink) window.history.replaceState(null, '', window.location.pathname);
         if (!signedIn) {
           setMode('signin');
           setOk(true);
