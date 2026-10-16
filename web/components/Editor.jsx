@@ -424,7 +424,7 @@ export default function Editor({
       </p>
 
       <label htmlFor="ed-notes">Notes</label>
-      <textarea id="ed-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <textarea id="ed-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} autoComplete="off" />
 
       {error && <div className="error">{error}</div>}
       <div className="row" style={{ marginTop: 14 }}>

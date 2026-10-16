@@ -119,6 +119,7 @@ function showScreen(name) {
   if (toastScreen && toastScreen !== name) hideToast();
   $('splash').classList.add('hidden');
   for (const s of SCREENS) $(`screen-${s}`).classList.toggle('hidden', s !== name);
+  if (name !== 'edit' && name !== 'metric-edit') clearEditorFields();
   const focus = { login: 'login-email', 'pin-setup': 'ps-pin', main: 'search' }[name];
   if (focus) setTimeout(() => $(focus).focus(), 50);
 }
@@ -136,6 +137,14 @@ async function showUnlockScreen(forceMaster = false) {
   hideError('unlock-error');
   showScreen('unlock');
   setTimeout(() => $(usePin ? 'unlock-pin' : 'unlock-pw').focus(), 50);
+}
+
+// Leaving the editor empties its boxes, so nothing typed there (notes,
+// keys...) lingers in the page or in Chrome's saved tab state (S3).
+function clearEditorFields() {
+  for (const el of document.querySelectorAll('#screen-edit input, #screen-edit textarea, #screen-metric-edit input, #screen-metric-edit textarea')) {
+    if (!['checkbox', 'radio', 'button', 'submit'].includes(el.type)) el.value = '';
+  }
 }
 
 let toastTimer = null;
