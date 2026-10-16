@@ -49,7 +49,8 @@ export default function Privacy() {
         <li><strong>Access to sites (asked for when needed)</strong> - the same, when OptiPass is opened in its own window.</li>
         <li><strong>contextMenus</strong> - the right-click &quot;OptiPass - fill login&quot; option.</li>
         <li><strong>clipboardWrite</strong> - the Copy buttons for usernames, passwords and 2FA codes.</li>
-        <li><strong>alarms</strong> - auto-lock and refreshing the LOW-credit badge.</li>
+        <li><strong>clipboardRead, offscreen</strong> - about 30 seconds after you copy a password or code, a hidden helper page checks whether the clipboard still holds it and, if so, empties it. Nothing else on the clipboard is kept or sent anywhere.</li>
+        <li><strong>alarms</strong> - auto-lock, clearing copied passwords after 30 seconds, and refreshing the LOW-credit badge.</li>
         <li><strong>storage</strong> - your session, settings and encrypted keys, as described above.</li>
       </ul>
 

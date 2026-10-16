@@ -15,6 +15,7 @@ import * as api from '../lib/api.js';
 import * as keychain from '../lib/keychain.js';
 import { getVersions, isStoreInstall, newer } from '../lib/updates.js';
 import { WEB_URL } from '../lib/config.js';
+import { copySecret } from '../lib/clipboard.js';
 
 function signupLink(inv) {
   return `${WEB_URL}/?invite=${encodeURIComponent(inv.code)}&email=${encodeURIComponent(inv.email)}`;
@@ -432,7 +433,7 @@ $('btn-ms-regen').addEventListener('click', () => {
 });
 
 $('btn-ms-copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(generatedMaster);
+  await copySecret(generatedMaster);
   toast('Master password copied - store it somewhere safe');
 });
 
@@ -985,7 +986,7 @@ function actionBtn(iconName, titleText, onClick) {
 async function copyText(text, message) {
   if (!text) return toast('Nothing to copy');
   clearTimeout(totpSwapTimer); // a newer copy wins over a pending 2FA swap
-  await navigator.clipboard.writeText(text);
+  await copySecret(text); // cleared again after 30 s
   toast(message);
   keychain.resetAutoLock();
 }
@@ -1000,13 +1001,13 @@ async function copyTotpCode(secret, swappedMsg) {
   clearTimeout(totpSwapTimer);
   const t = await generateTotp(secret);
   if (!t) return null;
-  await navigator.clipboard.writeText(t.code);
+  await copySecret(t.code);
   t.swapping = t.secondsLeft < TOTP_FRESH_SECONDS;
   if (t.swapping) {
     totpSwapTimer = setTimeout(async () => {
       const next = await generateTotp(secret);
       try {
-        await navigator.clipboard.writeText(next.code);
+        await copySecret(next.code); // restarts the 30 s clearing
         toast(swappedMsg(next));
       } catch {
         /* clipboard unavailable - the first code is still there */

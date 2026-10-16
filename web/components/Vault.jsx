@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { generateTotp } from '@/lib/crypto';
+import { copySecret } from '@/lib/clipboard';
 import { Icon, formatMonitorValue, monitorIsLow, timeAgo } from '@/components/ui';
 
 const TOTP_FRESH_SECONDS = 5;
@@ -45,7 +46,7 @@ export default function Vault({
   async function copy(text, msg) {
     if (!text) return showToast('Nothing to copy');
     clearTimeout(totpSwap.current); // a newer copy wins over a pending 2FA swap
-    await navigator.clipboard.writeText(text);
+    await copySecret(text); // cleared again after 30 s
     showToast(msg);
   }
 
@@ -55,13 +56,13 @@ export default function Vault({
     clearTimeout(totpSwap.current);
     const t = await generateTotp(entry.data.totp);
     if (!t) return showToast('This tool has an invalid 2FA key');
-    await navigator.clipboard.writeText(t.code);
+    await copySecret(t.code);
     if (t.secondsLeft >= TOTP_FRESH_SECONDS) return showToast(`2FA code copied - valid ${t.secondsLeft}s`);
     showToast(`2FA code copied - it changes in ${t.secondsLeft}s, the new one is copied then`);
     totpSwap.current = setTimeout(async () => {
       const next = await generateTotp(entry.data.totp);
       try {
-        await navigator.clipboard.writeText(next.code);
+        await copySecret(next.code); // restarts the 30 s clearing
         showToast(`New 2FA code copied - valid ${next.secondsLeft}s`);
       } catch {
         /* tab not focused - the first code is still there */

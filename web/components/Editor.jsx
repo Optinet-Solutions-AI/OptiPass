@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { generatePassword, generateTotp } from '@/lib/crypto';
+import { copySecret } from '@/lib/clipboard';
 import { Icon } from '@/components/ui';
 
 // Everything Save would write, as one comparable string. Metric values are
@@ -320,7 +321,7 @@ export default function Editor({
           <div className="row" style={{ margin: 0 }} key={i}>
             <input type="text" aria-label="Secret name" value={s.label} placeholder="Name, e.g. Private API key" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
             <input type="password" aria-label="Secret value" value={s.value} placeholder="Secret value" onChange={(e) => setSecrets(secrets.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} />
-            <button className="btn icon" title="Copy secret" onClick={async () => { await navigator.clipboard.writeText(s.value || ''); showToast('Secret copied'); }}><Icon name="key" /></button>
+            <button className="btn icon" title="Copy secret" onClick={async () => { await copySecret(s.value || ''); showToast('Secret copied'); }}><Icon name="key" /></button>
             <button className="btn icon" title="Remove" onClick={() => setSecrets(secrets.filter((_, j) => j !== i))}><Icon name="trash" /></button>
           </div>
         ))}

@@ -142,6 +142,18 @@ extension:
 The web app shows the same Username / Password / 2FA code / Edit buttons
 under every tool — no need to hover.
 
+**Copied passwords don't stay on the clipboard.** About **30 seconds** after
+you copy a username, password, secret, 2FA code or a new master password,
+OptiPass empties the clipboard — but only if it still holds what OptiPass
+copied, so anything you copied yourself since is left alone. Paste within 30
+seconds; after that, just copy again. In the extension this happens even
+after OptiPass is closed. In the web app it happens while the OptiPass tab is
+in front (otherwise as soon as you come back to it); the first time, Chrome
+asks whether the site may see your clipboard — allow it, or nothing is
+cleared. Windows' own clipboard history (Win+V) keeps its own copies, so
+leave that feature off. Signup links and payment-request summaries are not
+cleared (they're meant to be pasted to someone).
+
 ### Filling logins without opening OptiPass
 On any login page, **right-click the username or password field →
 "OptiPass – fill login"** → pick the saved login. If it says "Unlock OptiPass

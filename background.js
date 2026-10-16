@@ -5,13 +5,17 @@
 // - Every 30 minutes: applies updated files automatically (after a
 //   git pull the disk manifest differs from the running one) and
 //   refreshes the LOW-alert badge on the toolbar icon.
+// - Clears a copied secret from the clipboard after 30 s (lib/clipboard.js).
 
 import { rest } from './lib/api.js';
 import { decryptJson, importKeyB64 } from './lib/crypto.js';
 import { getVersions, isStoreInstall, newer } from './lib/updates.js';
+import { CLEAR_SECONDS } from './lib/clipboard.js';
 
 const SESSION_KEYS = 'optipass_session_keys';
 const AUTOLOCK_ALARM = 'optipass-autolock';
+const CLIP_ALARM = 'optipass-clip-clear';
+const CLIP_STORE = 'optipass_clip'; // {hash} of the last copied secret (memory only)
 const MAINT_ALARM = 'optipass-maintenance';
 const BADGE_COLOR = '#9f433a';
 
@@ -231,14 +235,42 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     chrome.storage.session.remove(SESSION_KEYS);
   } else if (alarm.name === MAINT_ALARM) {
     maintenance();
+  } else if (alarm.name === CLIP_ALARM) {
+    clearClipboardIfUnchanged();
   }
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === 'optipass-monitor-pick' && msg.payload) {
     chrome.storage.session.set({ optipass_pending_pick: msg.payload });
+  } else if (msg && msg.type === 'optipass-clip-armed' && msg.hash) {
+    // A newer copy replaces the pending one (same alarm name).
+    chrome.storage.session.set({ [CLIP_STORE]: { hash: msg.hash } });
+    chrome.alarms.create(CLIP_ALARM, { delayInMinutes: CLEAR_SECONDS / 60 });
   }
 });
+
+// ---------- copied secrets leave the clipboard (S5) ----------
+
+async function clearClipboardIfUnchanged() {
+  const { [CLIP_STORE]: clip } = await chrome.storage.session.get(CLIP_STORE);
+  await chrome.storage.session.remove(CLIP_STORE);
+  if (!clip?.hash) return;
+  try {
+    if (!(await chrome.offscreen.hasDocument())) {
+      await chrome.offscreen.createDocument({
+        url: 'offscreen/clipboard.html',
+        reasons: ['CLIPBOARD'],
+        justification: 'Remove a copied password from the clipboard after 30 seconds',
+      });
+    }
+    await chrome.runtime.sendMessage({ type: 'optipass-clip-check', hash: clip.hash });
+  } catch {
+    /* clipboard unavailable - nothing else to do */
+  } finally {
+    await chrome.offscreen.closeDocument().catch(() => {});
+  }
+}
 
 async function maintenance() {
   const { optipass_settings: settings = {} } = await chrome.storage.local.get('optipass_settings');

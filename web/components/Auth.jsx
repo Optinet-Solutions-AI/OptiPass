@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import * as api from '@/lib/api';
 import { generatePassphrase } from '@/lib/crypto';
+import { copySecret } from '@/lib/clipboard';
 
 function Brand({ title, sub }) {
   return (
@@ -220,7 +221,7 @@ export default function Auth({ screen, profile, notice, onNoticeShown, onBoot, o
               className="btn grow"
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(generated);
+                  await copySecret(generated);
                   setCopied(true);
                   showToast('Master password copied - store it somewhere safe');
                 } catch {
