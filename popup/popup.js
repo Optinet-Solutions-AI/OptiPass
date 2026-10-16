@@ -127,7 +127,9 @@ function showScreen(name) {
 // browser) with a master-password fallback, or master password only.
 async function showUnlockScreen(forceMaster = false) {
   $('unlock-email').textContent = state.profile?.email || '';
-  const usePin = !forceMaster && (await keychain.hasPin());
+  const usePin = !forceMaster && (await keychain.pinReady());
+  // A PIN is set but Chrome restarted: the master password is needed once.
+  $('unlock-restart-note').classList.toggle('hidden', usePin || forceMaster || !(await keychain.hasPin()));
   $('unlock-pin-wrap').classList.toggle('hidden', !usePin);
   $('unlock-master-wrap').classList.toggle('hidden', usePin);
   $('unlock-pin').value = '';
@@ -436,6 +438,7 @@ $('btn-ms-create').addEventListener('click', async () => {
   btn.textContent = 'Setting up encryption...';
   try {
     const { publicJwk, privateJwk, keyRecord } = await keychain.createUserKeys(generatedMaster);
+    await keychain.clearPin(); // a PIN from older keys can't unlock the new ones
     await api.rest(`/profiles?id=eq.${state.uid}`, { method: 'PATCH', body: { public_key: publicJwk } });
     await api.rest('/user_keys', { method: 'POST', body: { user_id: state.uid, ...keyRecord } });
     state.profile.public_key = publicJwk;
@@ -470,6 +473,11 @@ async function doUnlock() {
     const privateJwk = await keychain.decryptPrivateKey(pw, state.keyRecord);
     await keychain.setUnlocked(privateJwk);
     $('unlock-pw').value = '';
+    // First unlock since Chrome started: the PIN works again from here.
+    if ((await keychain.restorePin(privateJwk)) === 'reoffer') {
+      pinWasUpgraded = true;
+      await reofferPin();
+    }
     // Offer a quick-unlock PIN once per browser.
     if (!(await keychain.hasPin()) && !state.settings.pinOffered) {
       showPinSetup();
@@ -494,13 +502,16 @@ $('unlock-pw').addEventListener('keydown', (e) => {
 // Offered once per browser - and again whenever the PIN is lost to the
 // 5-try wipe or a sign-out (not when the user removes it in Settings).
 let pinWasWiped = false;
+let pinWasUpgraded = false; // an older PIN had to be dropped (S2)
 
 function showPinSetup() {
   $('ps-pin').value = '';
   $('ps-pin2').value = '';
   hideError('ps-error');
   $('ps-wiped').classList.toggle('hidden', !pinWasWiped);
+  $('ps-upgraded').classList.toggle('hidden', pinWasWiped || !pinWasUpgraded);
   pinWasWiped = false;
+  pinWasUpgraded = false;
   showScreen('pin-setup');
 }
 
@@ -530,7 +541,9 @@ $('unlock-pin').addEventListener('input', async () => {
     await enterMain();
   } catch (err) {
     $('unlock-pin').value = '';
-    if (err.code === 'PIN_WIPED') {
+    if (err.code === 'PIN_RESTART') {
+      await showUnlockScreen();
+    } else if (err.code === 'PIN_WIPED') {
       pinWasWiped = true;
       await reofferPin();
       await showUnlockScreen(true);
@@ -1763,7 +1776,7 @@ async function loadSettingsScreen() {
   hideError('sp-msg');
   const pinOn = await keychain.hasPin();
   $('sp-status').textContent = pinOn
-    ? 'PIN unlock is ON for this browser. Wrong PIN 5 times removes it.'
+    ? 'PIN unlock is ON for this browser. It works while Chrome stays open; after a restart, unlock once with your master password. Wrong PIN 5 times removes it.'
     : 'No PIN on this browser - unlocking asks for the master password.';
   $('btn-pin-remove').classList.toggle('hidden', !pinOn);
   $('set-autoupdate').checked = state.settings.autoUpdate !== false;
@@ -3136,7 +3149,7 @@ const TOUR_STEPS = [
   { screen: 'edit', el: 'acc-secrets', title: 'API keys & secrets', text: 'Any number of named secrets per tool - public keys, private keys, staging - each encrypted, each with a copy button.' },
   { screen: 'edit', el: 'acc-monitors', title: 'Credit & usage monitors', text: 'Track credits, bandwidth, RAM - anything with a number - read from the tool\'s API or picked off its dashboard. Below your threshold it turns red and badges the OptiPass icon.' },
   { screen: 'edit', el: 'acc-payments', title: 'Payments & top-ups', text: 'Keep the payment link, record every top-up, and request payments: the payer gets a guide window with everything needed, and marking it paid files the history automatically.' },
-  { screen: 'settings', el: 'sec-pin', title: 'Quick unlock PIN', text: 'Daily unlocking is just 6 digits. Five wrong tries removes the PIN and asks for your master password (changeable here too).' },
+  { screen: 'settings', el: 'sec-pin', title: 'Quick unlock PIN', text: 'Daily unlocking is just 6 digits. After Chrome restarts, unlock once with your master password and the PIN works again. Five wrong tries removes the PIN (changeable here too).' },
   { screen: 'settings', el: 'sec-updates', title: 'Updates', text: 'When a new version is out, the toolbar icon shows a NEW badge, the list shows a banner, and this section says how to update (git installs update with a pull; zip installs need the new zip).' },
   { screen: 'main', el: 'btn-admin', title: 'Team administration', text: 'Invite teammates with one-click signup links, manage roles, create team vaults, and add members.', skip: () => $('btn-admin').classList.contains('hidden') },
   { screen: 'main', el: 'btn-lock', title: 'Lock', text: 'Locks the vault (it also auto-locks after idle). That\'s the tour - the written manual lives in Settings > Help.' },

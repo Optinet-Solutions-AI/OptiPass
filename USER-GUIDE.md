@@ -94,8 +94,12 @@ extension:
   five times → the PIN is removed and your master password is required;
   right after unlocking, OptiPass offers to set a new PIN. (Signing out also
   removes the PIN, and a new one is offered at the next sign-in.)
-- **Master password:** used on a new browser, after a PIN wipe, or via
-  "Use master password instead".
+- **After restarting Chrome:** unlock **once** with your master password;
+  the same PIN then works again until Chrome closes. This is on purpose: the
+  PIN-locked copy of your keys is kept only in Chrome's memory, never on the
+  disk, so a copy of your computer gives nothing to guess the PIN against.
+- **Master password:** used on a new browser, after a Chrome restart, after
+  a PIN wipe, or via "Use master password instead".
 - **Auto-lock:** the vault locks after 5 minutes idle (change it in Settings →
   Auto-lock: 1 minute to 4 hours, or Never) and always when the browser closes.
   Any click, key press or scroll in OptiPass counts as activity. If OptiPass is
@@ -394,6 +398,9 @@ by 1Password and Bitwarden:
 - **Forgot your PIN** → "Use master password instead" (5 wrong tries resets
   the PIN automatically), then set a new PIN when it's offered — or later in
   Settings.
+- **Asked for the master password after restarting Chrome** → expected:
+  the PIN works only while Chrome stays open. Unlock once with the master
+  password and the PIN works again.
 - **"Your session expired - please sign in again"** → your sign-in ran out
   (or was ended by an admin); sign in again with your account password. Being
   offline for a while does *not* sign you out.
