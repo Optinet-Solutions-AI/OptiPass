@@ -35,6 +35,7 @@ export default function Settings({
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [newPw2, setNewPw2] = useState('');
+  const [signinPw, setSigninPw] = useState(''); // S6: compared here only, never sent
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const nameTimer = useRef(null);
@@ -65,12 +66,15 @@ export default function Settings({
       return setMsg({ text: `The new master password must be at least ${MASTER_MIN_LENGTH} characters.` });
     }
     if (newPw !== newPw2) return setMsg({ text: 'New passwords do not match.' });
+    if (!signinPw) return setMsg({ text: 'Also enter your sign-in password, so OptiPass can check (on this device only) that the new master password is different from it.' });
+    if (signinPw === newPw) return setMsg({ text: 'Your new master password must be different from your sign-in password. If they were the same, the sign-in service would receive the key to your vault every time you sign in.' });
     setBusy(true);
     try {
       await onChangeMaster(oldPw, newPw);
       setOldPw('');
       setNewPw('');
       setNewPw2('');
+      setSigninPw('');
       setMsg({ text: 'Master password changed.', ok: true });
     } catch (err) {
       // Only a failed decrypt means a wrong password; a save problem leaves the old one working.
@@ -164,7 +168,9 @@ export default function Settings({
           <input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} placeholder="Current master password" aria-label="Current master password" autoComplete="off" />
           <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="New master password (12+ characters)" aria-label="New master password" autoComplete="off" />
           <input type="password" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} placeholder="Confirm new master password" aria-label="Confirm new master password" autoComplete="off" />
+          <input type="password" value={signinPw} onChange={(e) => setSigninPw(e.target.value)} placeholder="Your sign-in password (checked on this device only)" aria-label="Your sign-in password" autoComplete="off" />
         </div>
+        <p className="muted">The master password must be different from the password you sign in with.</p>
         {msg && <div className={`error${msg.ok ? ' ok' : ''}`}>{msg.text}</div>}
         <button className="btn full" disabled={busy} onClick={changeMaster}>
           {busy ? 'Re-encrypting...' : 'Change password'}

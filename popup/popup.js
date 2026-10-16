@@ -1781,7 +1781,7 @@ async function loadSettingsScreen() {
   $('set-name').value = state.profile.display_name || '';
   $('set-theme').value = state.settings.theme || 'light';
   fillAutoLockSelect(state.settings.autoLockMinutes);
-  for (const id of ['cmp-old', 'cmp-new', 'cmp-new2', 'sp-pin', 'sp-pin2']) $(id).value = '';
+  for (const id of ['cmp-old', 'cmp-new', 'cmp-new2', 'cmp-signin', 'sp-pin', 'sp-pin2']) $(id).value = '';
   hideError('cmp-msg');
   hideError('sp-msg');
   const pinOn = await keychain.hasPin();
@@ -1951,6 +1951,10 @@ $('btn-change-pw').addEventListener('click', async () => {
     return showError('cmp-msg', `The new master password must be at least ${MASTER_MIN_LENGTH} characters.`);
   }
   if (newPw !== $('cmp-new2').value) return showError('cmp-msg', 'New passwords do not match.');
+  // S6: the sign-in password is only compared here, never sent or stored.
+  const signinPw = $('cmp-signin').value;
+  if (!signinPw) return showError('cmp-msg', 'Also enter your sign-in password, so OptiPass can check (on this device only) that the new master password is different from it.');
+  if (signinPw === newPw) return showError('cmp-msg', 'Your new master password must be different from your sign-in password. If they were the same, the sign-in service would receive the key to your vault every time you sign in.');
 
   const btn = $('btn-change-pw');
   btn.disabled = true;
@@ -1968,7 +1972,7 @@ $('btn-change-pw').addEventListener('click', async () => {
     await api.rest(`/user_keys?user_id=eq.${state.uid}`, { method: 'PATCH', body: newRecord });
     state.keyRecord = newRecord;
     api.logEvent('keys.master_password_changed');
-    for (const id of ['cmp-old', 'cmp-new', 'cmp-new2']) $(id).value = '';
+    for (const id of ['cmp-old', 'cmp-new', 'cmp-new2', 'cmp-signin']) $(id).value = '';
     showError('cmp-msg', 'Master password changed.', true);
   } catch (err) {
     showError('cmp-msg', `Couldn't change the master password - your current one still works. ${err.message}`);

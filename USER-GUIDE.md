@@ -12,6 +12,10 @@ only ever stores scrambled data. Not even admins can read your Personal vault.
 | **Account password** | Signs you in (like any website login) | Click **Forgot account password?** on the sign-in screen — we email you a reset link |
 | **Master password** | Decrypts your vaults; never leaves your device | **Gone forever — nobody can recover it.** Write it down somewhere safe. |
 
+Keep the two **different**: if they were the same, the sign-in service would
+receive the key to your vault every time you sign in. OptiPass refuses a new
+master password that matches your sign-in password.
+
 Day to day you'll barely type either — a 6-digit PIN unlocks the extension.
 
 ---
@@ -363,7 +367,7 @@ are actions with their own buttons).
 | Theme | Light (default) / dark — follows you across devices |
 | Auto-lock | How long without activity before locking: 1 minute … 4 hours, or Never. Saved as soon as you pick |
 | Quick unlock PIN | Set / change / remove for this browser |
-| Change master password | Re-encrypts your keys; vault data untouched. The new one needs 12+ characters. If saving fails (e.g. offline) you're told so and the old one keeps working |
+| Change master password | Re-encrypts your keys; vault data untouched. The new one needs 12+ characters and must differ from your sign-in password — type your sign-in password in the last box so OptiPass can check (only on your device; it isn't sent or stored). If saving fails (e.g. offline) you're told so and the old one keeps working |
 | Updates | Shows how to update when a new version is out (git: pull; zip: download again). The toggle (default on) applies a new version as soon as its files are in the folder. Manual check button |
 | Alerts | Toolbar badge for LOW metrics |
 | Help / tour | This guide's short version + the interactive tour |
