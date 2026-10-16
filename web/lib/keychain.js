@@ -1,6 +1,8 @@
-// Web keychain: unlocked key material lives in sessionStorage (cleared
-// when the tab closes) with an inactivity auto-lock, mirroring the
-// extension's chrome.storage.session behavior.
+// Web keychain: unlocked key material lives only in this page's memory
+// (never in sessionStorage, which Chrome writes to disk), with an
+// inactivity auto-lock. Reloading or closing the page locks the vault.
+// The private key is held as a non-extractable CryptoKey, vault keys as
+// CryptoKeys (extractable only because sharing re-wraps them for others).
 
 import {
   DEFAULT_ITERATIONS,
@@ -13,9 +15,22 @@ import {
   randomSalt,
 } from './crypto';
 
-const SESSION_STORE = 'optipass_session_keys';
-const ACTIVITY_KEY = 'optipass_last_activity';
 const SETTINGS_KEY = 'optipass_settings';
+
+// Unlocked state: { privateKey: CryptoKey, vaultKeys: Map(vault_id -> CryptoKey) }
+let unlocked = null;
+let lastActivity = 0;
+
+// Versions up to 2.16.36 kept the unlocked keys in sessionStorage: wipe
+// anything they left behind.
+if (typeof sessionStorage !== 'undefined') {
+  try {
+    sessionStorage.removeItem('optipass_session_keys');
+    sessionStorage.removeItem('optipass_last_activity');
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 export const DEFAULT_SETTINGS = { autoLockMinutes: 15, theme: 'light' };
 
@@ -32,15 +47,14 @@ export function saveSettings(settings) {
 }
 
 export function touchActivity() {
-  sessionStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+  lastActivity = Date.now();
 }
 
 // True when the idle timeout has passed; caller should lock.
 export function activityExpired() {
   const { autoLockMinutes } = getSettings();
   if (!autoLockMinutes) return false;
-  const last = Number(sessionStorage.getItem(ACTIVITY_KEY) || 0);
-  return last > 0 && Date.now() - last > autoLockMinutes * 60 * 1000;
+  return lastActivity > 0 && Date.now() - lastActivity > autoLockMinutes * 60 * 1000;
 }
 
 export async function createUserKeys(masterPassword) {
@@ -72,8 +86,14 @@ export async function reencryptPrivateKey(privateJwk, newMasterPassword) {
   return { key_salt: bufToB64(salt), iterations: DEFAULT_ITERATIONS, iv, ct };
 }
 
-export function setUnlocked(privateJwk) {
-  sessionStorage.setItem(SESSION_STORE, JSON.stringify({ privateJwk, vaultKeys: {} }));
+// Keep the private key as a non-extractable CryptoKey: usable for
+// unwrapping vault keys, but no script can read it back out.
+export async function setUnlocked(privateJwk) {
+  const { key_ops, ...jwk } = privateJwk;
+  const privateKey = await crypto.subtle.importKey('jwk', jwk, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, [
+    'unwrapKey',
+  ]);
+  unlocked = { privateKey, vaultKeys: new Map() };
   touchActivity();
 }
 
@@ -82,18 +102,10 @@ export function getUnlocked() {
     lock();
     return null;
   }
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_STORE));
-  } catch {
-    return null;
-  }
-}
-
-export function saveUnlocked(state) {
-  sessionStorage.setItem(SESSION_STORE, JSON.stringify(state));
+  return unlocked;
 }
 
 export function lock() {
-  sessionStorage.removeItem(SESSION_STORE);
-  sessionStorage.removeItem(ACTIVITY_KEY);
+  unlocked = null;
+  lastActivity = 0;
 }

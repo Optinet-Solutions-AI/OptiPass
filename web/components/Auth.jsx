@@ -279,6 +279,9 @@ export default function Auth({ screen, profile, notice, onNoticeShown, onBoot, o
           {busy ? 'Unlocking...' : 'Unlock'}
         </button>
         <button className="btn link full" onClick={onSignOut}>Sign out</button>
+        <p className="muted" style={{ textAlign: 'center' }}>
+          For your safety, the vault also locks when you reload or close this page.
+        </p>
       </div>
     );
   }

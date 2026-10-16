@@ -6,10 +6,7 @@ import * as keychain from '@/lib/keychain';
 import {
   decryptJson,
   encryptJson,
-  exportKeyB64,
   generateVaultKey,
-  importKeyB64,
-  importPrivateKey,
   unwrapVaultKey,
   wrapVaultKey,
 } from '@/lib/crypto';
@@ -187,25 +184,19 @@ export default function App() {
   async function ensureVaultKeys(mems) {
     const unlocked = keychain.getUnlocked();
     if (!unlocked) return false;
-    const priv = await importPrivateKey(unlocked.privateJwk);
     const map = new Map();
-    let changed = false;
     for (const m of mems) {
-      const cached = unlocked.vaultKeys[m.vault_id];
-      if (cached) {
-        map.set(m.vault_id, await importKeyB64(cached));
-      } else {
+      let key = unlocked.vaultKeys.get(m.vault_id);
+      if (!key) {
         try {
-          const key = await unwrapVaultKey(priv, m.wrapped_key);
-          unlocked.vaultKeys[m.vault_id] = await exportKeyB64(key);
-          map.set(m.vault_id, key);
-          changed = true;
+          key = await unwrapVaultKey(unlocked.privateKey, m.wrapped_key);
+          unlocked.vaultKeys.set(m.vault_id, key);
         } catch {
-          /* wrapped for an older keypair */
+          continue; /* wrapped for an older keypair */
         }
       }
+      map.set(m.vault_id, key);
     }
-    if (changed) keychain.saveUnlocked(unlocked);
     vaultKeysRef.current = map;
     return true;
   }
@@ -267,7 +258,7 @@ export default function App() {
     const prof = { ...profile, public_key: publicJwk };
     setProfile(prof);
     setKeyRecord(record);
-    keychain.setUnlocked(privateJwk);
+    await keychain.setUnlocked(privateJwk);
     api.logEvent('keys.setup');
     await enterMain(prof);
     showToast('Vault ready');
@@ -278,7 +269,7 @@ export default function App() {
 
   async function handleUnlock(masterPassword) {
     const privateJwk = await keychain.decryptPrivateKey(masterPassword, keyRecord);
-    keychain.setUnlocked(privateJwk);
+    await keychain.setUnlocked(privateJwk);
     await enterMain();
   }
 

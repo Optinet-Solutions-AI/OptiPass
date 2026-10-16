@@ -6,8 +6,8 @@ zero-knowledge encryption as the Chrome extension. Built with Next.js.
 ## What works on the web
 
 - Sign in / sign up (with invite codes), pending-approval gate
-- Master password setup and unlock (keys held in the tab's session only,
-  idle auto-lock)
+- Master password setup and unlock (keys held in page memory only, never
+  in browser storage: reloading or closing the page locks; idle auto-lock)
 - Vault list with search and vault filter; copy username / password /
   live 2FA codes
 - Full entry editor: passwords, generator, 2FA keys, multiple API-key

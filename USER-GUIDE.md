@@ -328,6 +328,11 @@ payment, the payer's guide, and payment history). The web app does show a
 payment data. The browser's **Back** button moves between the web app's
 screens (editor → list); from the list it leaves the site.
 
+The web app keeps your unlocked vault only in the open page, never in the
+browser's saved data, so **reloading or closing the page locks it** — just
+type your master password again. It also locks when idle (15 minutes
+unless you change Auto-lock in its Settings).
+
 ---
 
 ## 10. Settings reference
